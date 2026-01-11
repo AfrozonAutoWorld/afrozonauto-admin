@@ -3,6 +3,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronDown, Search, Check } from "lucide-react";
 
+interface RestCountry {
+  name: {
+    common: string;
+  };
+}
+
 interface CountrySelectProps {
   label?: string;
   value: string;
@@ -35,11 +41,16 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
   useEffect(() => {
     const fetchCountries = async () => {
       try {
-        const res = await fetch("https://restcountries.com/v3.1/all?fields=name");
-        const data = await res.json();
+        const res = await fetch(
+          "https://restcountries.com/v3.1/all?fields=name"
+        );
+
+        const data: RestCountry[] = await res.json();
+
         const countryNames = data
           .map((c) => c.name.common)
-          .sort((a: string, b: string) => a.localeCompare(b));
+          .sort((a, b) => a.localeCompare(b));
+
         setCountries(countryNames);
       } catch (err) {
         console.error("Failed to fetch countries", err);
@@ -47,8 +58,10 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
         setIsLoading(false);
       }
     };
+
     fetchCountries();
   }, []);
+
 
   // Close dropdown when clicking outside
   useEffect(() => {
