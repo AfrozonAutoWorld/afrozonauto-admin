@@ -4,6 +4,7 @@ import "./globals.css";
 import ReactQueryProvider from "@/providers/QueryProvider";
 import { Toaster } from "sonner";
 import { Sidebar } from "@/components/layout";
+import { Providers } from "@/providers/SessionProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,16 +32,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ReactQueryProvider>
-          <div className="flex h-screen overflow-hidden">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto bg-background">
-              {children}
-              <Toaster />
-            </main>
-          </div>
-        </ReactQueryProvider>
-
+        <Providers>
+          <ReactQueryProvider>
+            <div className="flex h-screen overflow-hidden">
+              <Sidebar />
+              <main className="flex-1 overflow-y-auto bg-background">
+                {children}
+                <Toaster />
+              </main>
+            </div>
+          </ReactQueryProvider>
+        </Providers>
       </body>
     </html>
   );

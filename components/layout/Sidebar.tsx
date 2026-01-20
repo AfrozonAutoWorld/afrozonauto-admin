@@ -13,7 +13,6 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
-import { useAuth } from '@/lib/hooks/useAuth';
 import { useUIStore } from '@/lib/store/useUIStore';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -21,6 +20,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Logo } from '../shared';
 import { useAuthStore } from '@/lib/store';
 import { useState } from 'react';
+import { signOut, useSession } from 'next-auth/react';
 
 const menuItems = [
   {
@@ -66,14 +66,22 @@ const menuItems = [
 ];
 
 function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
+  const { data: session } = useSession();
+
   const pathname = usePathname();
-  const { user, handleLogout } = useAuth();
 
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
 
   const toggleMenu = (href: string) => {
     setExpandedMenus(prev => ({ ...prev, [href]: !prev[href] }));
   };
+
+  const handleLogout = async () => {
+    await signOut({
+      callbackUrl: "/login",
+    });
+  };
+
 
   return (
     <div className="flex h-full flex-col bg-card">
@@ -170,8 +178,8 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
           <p className="text-xs font-medium text-muted-foreground mb-1">
             Signed in as
           </p>
-          <p className="text-sm font-medium truncate">{user?.name}</p>
-          <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+          <p className="text-sm font-medium truncate">{session?.user.fullName ?? ""}</p>
+          <p className="text-xs text-muted-foreground truncate">{session?.user.email ?? ""}</p>
         </div>
 
         <Button
