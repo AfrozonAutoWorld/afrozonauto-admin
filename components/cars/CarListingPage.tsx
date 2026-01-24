@@ -32,7 +32,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useCars, useToggleFeatured, useToggleAvailability } from '@/lib/hooks/useCars';
+import {
+  useVehicles,
+  useToggleFeatured,
+  useToggleAvailability,
+  useDeleteVehicle
+} from '@/lib/hooks/useVehicles';
 import {
   Search,
   Plus,
@@ -41,78 +46,105 @@ import {
   Edit,
   Star,
   Power,
-  Car as CarIcon
+  Car as CarIcon,
+  Trash2
 } from 'lucide-react';
 import Image from 'next/image';
 import { AddCarModal } from './AddCarModal';
+import { Vehicle } from '@/lib/api/queries';
 
 
 export function CarsListingPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [conditionFilter, setConditionFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<string>('all');
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const { data: cars, isLoading } = useCars();
+  // Build filters object
+  const filters = {
+    search: searchQuery || undefined,
+    source: sourceFilter !== 'all' ? sourceFilter.toUpperCase() : undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    vehicleType: vehicleTypeFilter !== 'all' ? vehicleTypeFilter : undefined,
+    page: currentPage,
+    limit: 50,
+    includeApi: true,
+  };
+
+  const { data, isLoading } = useVehicles(filters);
   const toggleFeatured = useToggleFeatured();
   const toggleAvailability = useToggleAvailability();
+  const deleteVehicle = useDeleteVehicle();
 
-  const filteredCars = cars?.filter(car => {
-    const matchesSearch =
-      car.make.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      car.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      car.location.toLowerCase().includes(searchQuery.toLowerCase());
+  const vehicles = data?.data || [];
+  const meta = data?.meta;
 
-    const matchesSource = sourceFilter === 'all' || car.source === sourceFilter;
-    const matchesCondition = conditionFilter === 'all' || car.condition === conditionFilter;
+  // Calculate stats
+  const stats = {
+    total: meta?.total || 0,
+    available: vehicles.filter(v => v.status === 'AVAILABLE').length,
+    fromApi: meta?.fromApi || 0,
+    featured: vehicles.filter(v => v.featured).length,
+  };
 
-    return matchesSearch && matchesSource && matchesCondition;
-  });
+  const handleDelete = (id: string, name: string) => {
+    if (confirm(`Are you sure you want to delete ${name}?`)) {
+      deleteVehicle.mutate(id);
+    }
+  };
+
+
+  function getPrimaryImage(vehicle: Vehicle): string {
+    const fallbackImage = 'https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg?auto=compress&cs=tinysrgb&w=800';
+
+
+    const primaryImage = vehicle.apiData?.listing?.retailListing?.primaryImage
+      || vehicle.apiData?.listing?.wholesaleListing?.primaryImage;
+
+    if (primaryImage) return primaryImage;
+
+    if (vehicle.images && vehicle.images.length > 0) {
+      return vehicle.images[0];
+    }
+
+    return fallbackImage;
+  }
 
   return (
     <div>
-      <Header
-        title="Car Listings"
-      // description="Manage car inventory from API and manual entries"
-      />
+      <Header title="Vehicle Listings" />
 
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Summary Stats */}
-        {cars && (
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">{cars.length}</div>
-                <p className="text-sm text-muted-foreground">Total Cars</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">
-                  {cars.filter(c => c.available).length}
-                </div>
-                <p className="text-sm text-muted-foreground">Available</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">
-                  {cars.filter(c => c.source === 'api').length}
-                </div>
-                <p className="text-sm text-muted-foreground">API Cars</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">
-                  {cars.filter(c => c.featured).length}
-                </div>
-                <p className="text-sm text-muted-foreground">Featured</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{stats.total}</div>
+              <p className="text-sm text-muted-foreground">Total Vehicles</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{stats.available}</div>
+              <p className="text-sm text-muted-foreground">Available</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{stats.fromApi}</div>
+              <p className="text-sm text-muted-foreground">From API</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{stats.featured}</div>
+              <p className="text-sm text-muted-foreground">Featured</p>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Search and Filters */}
         <Card>
@@ -122,15 +154,13 @@ export function CarsListingPage() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by make, model, or location..."
+                    placeholder="Search by make, model, VIN..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9"
                   />
                 </div>
-                <div className="flex gap-2">
-
-
+                <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                   <Select value={sourceFilter} onValueChange={setSourceFilter}>
                     <SelectTrigger className="w-full sm:w-40">
                       <SelectValue placeholder="Source" />
@@ -142,15 +172,28 @@ export function CarsListingPage() {
                     </SelectContent>
                   </Select>
 
-                  <Select value={conditionFilter} onValueChange={setConditionFilter}>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-full sm:w-40">
-                      <SelectValue placeholder="Condition" />
+                      <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Conditions</SelectItem>
-                      <SelectItem value="new">New</SelectItem>
-                      <SelectItem value="used">Used</SelectItem>
-                      <SelectItem value="certified">Certified</SelectItem>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="AVAILABLE">Available</SelectItem>
+                      <SelectItem value="SOLD">Sold</SelectItem>
+                      <SelectItem value="PENDING">Pending</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={vehicleTypeFilter} onValueChange={setVehicleTypeFilter}>
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="CAR">Car</SelectItem>
+                      <SelectItem value="SEDAN">Sedan</SelectItem>
+                      <SelectItem value="SUV">SUV</SelectItem>
+                      <SelectItem value="TRUCK">Truck</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -160,28 +203,28 @@ export function CarsListingPage() {
                 <CustomBtn
                   icon={Plus}
                   onClick={() => setAddModalOpen(true)}
-                  className='bg-emerald-600 text-white rounded-lg hover:bg-emerald-700'
+                  className="bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
                 >
-                  Add Car Manually
+                  Add Vehicle
                 </CustomBtn>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Cars Table */}
+        {/* Vehicles Table */}
         <Card>
           <CardContent className="p-0">
             {isLoading ? (
-              <LoadingSpinner text="Loading cars..." />
-            ) : filteredCars && filteredCars.length > 0 ? (
+              <LoadingSpinner text="Loading vehicles..." />
+            ) : vehicles.length > 0 ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-50">Car</TableHead>
+                      <TableHead className="min-w-[250px]">Vehicle</TableHead>
                       <TableHead>Price</TableHead>
-                      <TableHead>Condition</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead className="hidden md:table-cell">Mileage</TableHead>
                       <TableHead>Location</TableHead>
                       <TableHead>Source</TableHead>
@@ -190,104 +233,163 @@ export function CarsListingPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCars.map((car) => (
-                      <TableRow key={car.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="relative h-12 w-16 rounded overflow-hidden bg-muted shrink-0">
-                              {car.images[0] ? (
-                                <Image
-                                  src={car.images[0]}
-                                  alt={`${car.make} ${car.model}`}
-                                  fill
-                                  className="object-cover"
-                                />
-                              ) : (
-                                <div className="flex items-center justify-center h-full">
-                                  <CarIcon className="h-6 w-6 text-muted-foreground" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="font-medium flex items-center gap-2">
-                                <span className="truncate">
-                                  {car.make} {car.model}
-                                </span>
-                                {car.featured && (
-                                  <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 shrink-0" />
+                    {vehicles.map((vehicle) => {
+                      const primaryImage = getPrimaryImage(vehicle);
+
+                      return (
+                        <TableRow key={vehicle.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="relative h-12 w-16 rounded overflow-hidden bg-muted shrink-0">
+                                {primaryImage ? (
+                                  <Image
+                                    src={primaryImage}
+                                    alt={`${vehicle.make} ${vehicle.model}`}
+                                    fill
+                                    className="object-cover"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = 'https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg?auto=compress&cs=tinysrgb&w=800';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="flex items-center justify-center h-full">
+                                    <CarIcon className="h-6 w-6 text-muted-foreground" />
+                                  </div>
                                 )}
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                {car.year}
+                              <div className="min-w-0">
+                                <div className="font-medium flex items-center gap-2">
+                                  <span className="truncate">
+                                    {vehicle.make} {vehicle.model}
+                                  </span>
+                                  {vehicle.featured && (
+                                    <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 shrink-0" />
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {vehicle.year} • {vehicle.vin}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          ${car.price.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={car.condition} />
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-sm">
-                          {car.mileage ? `${car.mileage.toLocaleString()} mi` : 'N/A'}
-                        </TableCell>
-                        <TableCell className="text-sm">{car.location}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={car.source === 'api' ? 'active' : 'inactive'} />
-
-                        </TableCell>
-                        <TableCell>
-
-                          <StatusBadge status={car.source === 'api' ? 'active' : 'inactive'} />
-
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button
-                                type="button"
-                                className="h-8 w-8 p-0 flex items-center justify-center rounded hover:bg-gray-100 cursor-pointer"
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="z-50">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => router.push(`/admin/cars/${car.id}`)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => router.push(`/cars/${car.id}/edit`)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit Car
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => toggleFeatured.mutate(car.id)}>
-                                <Star className="mr-2 h-4 w-4" />
-                                {car.featured ? 'Unfeature' : 'Feature'}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => toggleAvailability.mutate(car.id)}>
-                                <Power className="mr-2 h-4 w-4" />
-                                Mark as {car.available ? 'Sold' : 'Available'}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            ${vehicle.priceUsd.toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={vehicle.vehicleType} />
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-sm">
+                            {vehicle.mileage ? `${vehicle.mileage.toLocaleString()} mi` : 'N/A'}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {vehicle.dealerCity && vehicle.dealerState
+                              ? `${vehicle.dealerCity}, ${vehicle.dealerState}`
+                              : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={vehicle.source} />
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={vehicle.status} />
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="h-8 w-8 p-0 flex items-center justify-center rounded hover:bg-gray-100 cursor-pointer"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => router.push(`/admin/vehicles/${vehicle.id}`)}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => router.push(`/admin/vehicles/${vehicle.id}/edit`)}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit Vehicle
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => toggleFeatured.mutate(vehicle.id)}
+                                  disabled={toggleFeatured.isPending}
+                                >
+                                  <Star className="mr-2 h-4 w-4" />
+                                  {vehicle.featured ? 'Unfeature' : 'Feature'}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => toggleAvailability.mutate(vehicle.id)}
+                                  disabled={toggleAvailability.isPending}
+                                >
+                                  <Power className="mr-2 h-4 w-4" />
+                                  Mark as {vehicle.status === 'AVAILABLE' ? 'Sold' : 'Available'}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(
+                                    vehicle.id,
+                                    `${vehicle.make} ${vehicle.model}`
+                                  )}
+                                  disabled={deleteVehicle.isPending}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
+
+                {/* Pagination */}
+                {meta && meta.pages > 1 && (
+                  <div className="flex items-center justify-between px-6 py-4 border-t">
+                    <div className="text-sm text-muted-foreground">
+                      Page {meta.page} of {meta.pages} ({meta.total} total)
+                    </div>
+                    <div className="flex gap-2">
+                      <CustomBtn
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        variant="bordered"
+                      >
+                        Previous
+                      </CustomBtn>
+                      <CustomBtn
+                        onClick={() => setCurrentPage(p => Math.min(meta.pages, p + 1))}
+                        disabled={currentPage === meta.pages}
+                        variant="bordered"
+                      >
+                        Next
+                      </CustomBtn>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <EmptyState
                 icon={CarIcon}
-                title="No cars found"
-                description={searchQuery ? "Try adjusting your search" : "Start by adding your first car"}
+                title="No vehicles found"
+                description={
+                  searchQuery
+                    ? "Try adjusting your search or filters"
+                    : "Start by adding your first vehicle"
+                }
                 action={{
-                  label: "Add Car",
+                  label: "Add Vehicle",
                   onClick: () => setAddModalOpen(true),
                   icon: Plus,
                 }}
@@ -295,16 +397,10 @@ export function CarsListingPage() {
             )}
           </CardContent>
         </Card>
-
-
       </div>
 
-      {/* Add Car Modal */}
-      <AddCarModal
-        open={addModalOpen}
-        onOpenChange={setAddModalOpen}
-      />
+      {/* Add Vehicle Modal */}
+      <AddCarModal open={addModalOpen} onOpenChange={setAddModalOpen} />
     </div>
   );
 }
-

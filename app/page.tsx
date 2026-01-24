@@ -2,32 +2,42 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/lib/store/authStore';
+import { useSession } from 'next-auth/react';
 import { Preloader } from '@/components/layout/Preloader';
 
 export default function RootPage() {
   const router = useRouter();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const user = useAuthStore((state) => state.user);
+  const { data: session, status } = useSession();
 
   useEffect(() => {
+    // Wait for session to load
+    if (status === 'loading') return;
+
     const timer = setTimeout(() => {
-      if (isAuthenticated && user) {
-        if (user.role === 'super_admin') {
-          router.push('/admin/dashboard');
-        } else if (user.role === 'operations_admin') {
-          router.push('/operations/dashboard');
-        } else {
-          useAuthStore.getState().logout();
-          router.push('/login');
+      if (status === 'authenticated' && session?.user) {
+        const role = session.user.role;
+
+        // Route based on user role
+        switch (role) {
+          case 'SUPER_ADMIN':
+          case 'ADMIN':
+            router.push('/admin');
+            break;
+          case 'OPERATION':
+            router.push('/operations');
+            break;
+          default:
+            // Unknown role, redirect to login
+            router.push('/login');
         }
       } else {
+        // Not authenticated
         router.push('/login');
       }
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated, user, router]);
+  }, [status, session, router]);
 
   return <Preloader message="Loading hang tight..." variant="default" />;
 }
