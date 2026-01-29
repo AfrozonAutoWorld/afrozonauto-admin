@@ -7,7 +7,7 @@ declare module "next-auth" {
     emailVerified: boolean;
     fullName: string | null;
     phone: string | null;
-    role: "SUPER_ADMIN" | "ADMIN" | "OPERATION";
+    role: "SUPER_ADMIN" | "ADMIN" | "OPERATION" | "BUYER";
     isActive: boolean;
     isSuspended: boolean;
     googleId: string;
@@ -43,7 +43,7 @@ declare module "next-auth/jwt" {
     emailVerified?: boolean;
     fullName?: string | null;
     phone?: string | null;
-    role?: "SUPER_ADMIN" | "ADMIN" | "OPERATION";
+    role?: "SUPER_ADMIN" | "ADMIN" | "OPERATION" | "BUYER";
     isActive?: boolean;
     isSuspended?: boolean;
     googleId?: string;

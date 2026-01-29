@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Logo } from '../shared';
-import { useAuthStore } from '@/lib/store';
 import { useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 
@@ -58,18 +57,11 @@ const menuItems = [
     href: '/admin/payments',
     icon: CreditCard,
   },
-  // {
-  //   title: 'Settings',
-  //   href: '/settings',
-  //   icon: Settings,
-  // },
 ];
 
 function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
   const { data: session } = useSession();
-
   const pathname = usePathname();
-
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
 
   const toggleMenu = (href: string) => {
@@ -81,7 +73,6 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
       callbackUrl: "/login",
     });
   };
-
 
   return (
     <div className="flex h-full flex-col bg-card">
@@ -168,7 +159,6 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
             </div>
           );
         })}
-
       </nav>
 
       <Separator />
@@ -197,13 +187,18 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-
+  const { data: session, status } = useSession();
   const { isMobileSidebarOpen, closeMobileSidebar } = useUIStore();
+
+  // Check if user is authenticated using NextAuth session
+  const isAuthenticated = status === 'authenticated';
   const isAuthRoute = pathname === '/login' || pathname === '/';
+
+  // Don't show sidebar on auth routes or when not authenticated
   if (!isAuthenticated || isAuthRoute) {
     return null;
   }
+
   return (
     <>
       {/* Desktop Sidebar - Always visible on large screens */}

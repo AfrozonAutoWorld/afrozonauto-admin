@@ -7,22 +7,20 @@ import { AlertCircle } from 'lucide-react';
 import { CustomBtn, Logo } from '@/components/shared';
 import { FormField, PasswordField } from '@/components/Form';
 import { EmailSchema, PasswordSchema, useField } from '@/lib';
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { showToast } from '@/lib/showNotification';
 import { useRouter } from 'next/navigation';
 
-
 export function LoginPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
 
   const { value: email, error: emailError, handleChange: handleEmailChange } = useField("", EmailSchema);
-
   const {
     value: password,
     error: passwordError,
     handleChange: handlePasswordChange,
   } = useField("", PasswordSchema);
-
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -32,10 +30,39 @@ export function LoginPage() {
     setIsDisabled(!email || !password || !!passwordError || !!emailError);
   }, [email, emailError, password, passwordError]);
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      const role = session.user.role;
+      const redirectPath = sessionStorage.getItem('redirectAfterLogin');
+
+      // Clear the stored redirect path
+      if (redirectPath) {
+        sessionStorage.removeItem('redirectAfterLogin');
+        router.push(redirectPath);
+        return;
+      }
+
+      // Default role-based routing
+      switch (role) {
+        case 'SUPER_ADMIN':
+        case 'ADMIN':
+        case 'BUYER':
+          router.push('/admin/dashboard');
+          break;
+        case 'OPERATION':
+          router.push('/operations/dashboard');
+          break;
+        default:
+          router.push('/login');
+      }
+    }
+  }, [status, session, router]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
 
     try {
       const res = await signIn("credentials", {
@@ -49,12 +76,14 @@ export function LoginPage() {
       }
 
       if (res.error === "CredentialsSignin") {
+        setError("Invalid email or password");
         showToast({
           type: "error",
           message: "Invalid email or password",
           duration: 8000,
         });
       } else if (res.error) {
+        setError(res.error);
         showToast({
           type: "error",
           message: res.error || "Unexpected server error",
@@ -66,16 +95,18 @@ export function LoginPage() {
           message: "Login Successful",
           duration: 3000,
         });
-        router.push("/dashboard");
+        // The useEffect above will handle the redirect
       }
     } catch (error: any) {
       console.error("Login failed:", error);
+      const errorMessage = error?.message?.includes("NetworkError")
+        ? "Network error. Please check your internet connection."
+        : "Unexpected error occurred";
+
+      setError(errorMessage);
       showToast({
         type: "error",
-        message:
-          error?.message?.includes("NetworkError")
-            ? "Network error. Please check your internet connection."
-            : "Unexpected error occurred",
+        message: errorMessage,
         duration: 8000,
       });
     } finally {
@@ -83,13 +114,11 @@ export function LoginPage() {
     }
   };
 
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4 text-center">
           <Logo />
-
         </CardHeader>
         <CardContent>
           {error && (
@@ -116,30 +145,25 @@ export function LoginPage() {
               />
 
               <div>
-
                 <PasswordField
                   PasswordText="Password"
                   placeholderText="Enter your password"
                   passwordError={passwordError}
                   handlePasswordChange={handlePasswordChange}
                 />
-
               </div>
             </div>
             <div className="text-center">
               <CustomBtn
                 type="submit"
                 isLoading={isLoading}
+                isDisabled={isDisabled}
                 className="bg-emerald-600 text-white rounded-lg cursor-pointer px-4 font-semibold text-lg"
               >
                 Login
               </CustomBtn>
-
             </div>
-
           </form>
-
-
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
             <p>Forgot password? Contact system administrator</p>
