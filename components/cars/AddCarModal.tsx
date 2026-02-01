@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useCreateVehicle } from '@/lib/hooks/useVehicles';
 import { Modal } from '../shared';
-import { FormField, SelectField, TextAreaField } from '@/components/Form';
+import { FormField, SelectField } from '@/components/Form';
 import { Switch } from '@nextui-org/react';
 import {
   MakeSchema,
@@ -11,10 +11,9 @@ import {
   YearSchema,
   PriceSchema,
   MileageSchema,
-  RequiredSchema,
+  VinSchema
 } from '@/lib/schema';
 import { useField } from '@/lib';
-import MediaUpload from '../shared/MediaFilepload';
 import { toast } from 'sonner';
 
 const vehicleTypeOptions = [
@@ -24,7 +23,13 @@ const vehicleTypeOptions = [
   { value: "TRUCK", label: "Truck" },
   { value: "VAN", label: "Van" },
   { value: "COUPE", label: "Coupe" },
+  { value: "HATCHBACK", label: "Hatchback" },
+  { value: "WAGON", label: "Wagon" },
+  { value: "CONVERTIBLE", label: "Convertible" },
+  { value: "MOTORCYCLE", label: "Motorcycle" },
+  { value: "OTHER", label: "Other" },
 ];
+
 
 const transmissionOptions = [
   { value: "Automatic", label: "Automatic" },
@@ -49,9 +54,12 @@ const statusOptions = [
 
 const availabilityOptions = [
   { value: "IN_STOCK", label: "In Stock" },
+  { value: "IN_TRANSIT", label: "In Transit" },
+  { value: "AT_PORT", label: "At Port" },
+  { value: "READY_FOR_PICKUP", label: "Ready for Pickup" },
   { value: "OUT_OF_STOCK", label: "Out of Stock" },
-  { value: "RESERVED", label: "Reserved" },
 ];
+
 
 interface AddCarModalProps {
   open: boolean;
@@ -62,7 +70,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   const createVehicle = useCreateVehicle();
 
   const { value: vin, error: vinError, handleChange: handleVinChange } =
-    useField('', RequiredSchema('VIN'));
+    useField('', VinSchema);
 
   const { value: make, error: makeError, handleChange: handleMakeChange } =
     useField('', MakeSchema);
@@ -102,7 +110,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
 
   const [availability, setAvailability] = useState<string>("IN_STOCK");
 
-  const [images, setImages] = useState<File[]>([]);
+  const [imageUrls, setImageUrls] = useState<string[]>([""]);
   const [uploading, setUploading] = useState(false);
   const [featured, setFeatured] = useState(false);
   const [isActive, setIsActive] = useState(true);
@@ -116,40 +124,18 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
       .replace(/(^-|-$)/g, '');
   };
 
-  const handleImagesSelect = (files: File[]) => {
-    setImages(files);
+
+  const handleImageChange = (index: number, value: string) => {
+    const updated = [...imageUrls];
+    updated[index] = value;
+    setImageUrls(updated);
   };
 
-  // Upload images to your storage service (e.g., Cloudinary, S3, etc.)
-  const uploadImages = async (files: File[]): Promise<string[]> => {
-    const uploadedUrls: string[] = [];
+  const addImageField = () => setImageUrls([...imageUrls, ""]);
+  const removeImageField = (index: number) =>
+    setImageUrls(imageUrls.filter((_, i) => i !== index));
 
-    try {
-      for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
 
-        // Replace this with your actual image upload endpoint
-        // This is just an example - adjust to your backend API
-        const response = await fetch('/api/upload-image', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to upload ${file.name}`);
-        }
-
-        const data = await response.json();
-        uploadedUrls.push(data.url); // Adjust based on your API response
-      }
-
-      return uploadedUrls;
-    } catch (error) {
-      console.error('Image upload error:', error);
-      throw error;
-    }
-  };
 
   const validateForm = () => {
     let isValid = true;
@@ -188,7 +174,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
     setFuelType('');
     setStatus('AVAILABLE');
     setAvailability('IN_STOCK');
-    setImages([]);
+    setImageUrls([""]);
     setFeatured(false);
     setIsActive(true);
     setIsHidden(false);
@@ -202,12 +188,6 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
     try {
       setUploading(true);
 
-      // Upload images first and get URLs
-      let imageUrls: string[] = [];
-      if (images.length > 0) {
-        toast.info('Uploading images...');
-        imageUrls = await uploadImages(images);
-      }
 
       // Create the payload matching the API format
       const payload = {
@@ -215,9 +195,9 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
         slug: generateSlug(make, model, year, vin),
         make,
         model,
-        year: parseInt(year),
+        year: Number(year),
         vehicleType,
-        priceUsd: parseFloat(price),
+        priceUsd: Number(price),
         transmission,
         fuelType,
         source: 'MANUAL',
@@ -226,10 +206,13 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
         featured,
         isActive,
         isHidden,
-        ...(originalPrice && { originalPriceUsd: parseFloat(originalPrice) }),
-        ...(mileage && { mileage: parseInt(mileage) }),
-        ...(imageUrls.length > 0 && { images: imageUrls }),
+        ...(originalPrice ? { originalPriceUsd: Number(originalPrice) } : {}),
+        ...(mileage ? { mileage: Number(mileage) } : {}),
+        ...(imageUrls.filter(Boolean).length
+          ? { images: imageUrls.filter(url => url.trim() !== "") }
+          : {}),
       };
+
 
       // Send as JSON, not FormData
       createVehicle.mutate(payload, {
@@ -432,7 +415,45 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
         </div>
 
         {/* Image Upload Section */}
+        {/* Image URL Section */}
         <div className="space-y-2">
+          <label className="text-sm font-medium">Image URLs</label>
+
+          {imageUrls.map((url, index) => (
+            <div key={index} className="flex gap-2">
+              <input
+                type="url"
+                placeholder="https://example.com/car.jpg"
+                value={url}
+                onChange={(e) => handleImageChange(index, e.target.value)}
+                className="flex-1 border rounded px-3 py-2 text-sm"
+              />
+              {imageUrls.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeImageField(index)}
+                  className="text-red-500 text-sm"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={addImageField}
+            className="text-sm text-blue-600"
+          >
+            + Add another image
+          </button>
+
+          <p className="text-xs text-muted-foreground">
+            Paste direct image links. First image will be the cover.
+          </p>
+        </div>
+
+        {/* <div className="space-y-2">
           <MediaUpload
             onFileSelect={handleImagesSelect}
             maxFiles={5}
@@ -446,7 +467,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
           <p className="text-xs text-amber-600">
             Note: Images will be uploaded to the server before creating the vehicle.
           </p>
-        </div>
+        </div> */}
 
         <div className="space-y-3">
           <div className="flex items-center justify-between p-4 border rounded-lg">
