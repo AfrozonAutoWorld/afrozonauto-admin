@@ -1,4 +1,3 @@
-export * from "./useAuth";
 export * from "./useCars";
 export * from "./useDashboard";
 export * from "./useOrders";

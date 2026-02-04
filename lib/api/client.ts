@@ -1,27 +1,37 @@
 import axios from "axios";
+import { getSession } from "next-auth/react";
 
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api",
+  baseURL:
+    process.env.NEXT_PUBLIC_API_URL ||
+    "https://afrozonauto-backend.onrender.com/api",
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Attach token dynamically before every request
+apiClient.interceptors.request.use(
+  async (config) => {
+    const session = await getSession(); // ✅ allowed outside components
+    const token = session?.accessToken;
 
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
+// Handle 401 globally
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token");
       window.location.href = "/login";
     }
     return Promise.reject(error);
-  }
+  },
 );

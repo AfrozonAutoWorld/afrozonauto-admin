@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useCreateVehicle } from '@/lib/hooks/useVehicles';
 import { Modal } from '../shared';
-import { FormField, SelectField, TextAreaField } from '@/components/Form';
+import { FormField, SelectField } from '@/components/Form';
 import { Switch } from '@nextui-org/react';
 import {
   MakeSchema,
@@ -11,10 +11,10 @@ import {
   YearSchema,
   PriceSchema,
   MileageSchema,
-  RequiredSchema,
+  VinSchema
 } from '@/lib/schema';
 import { useField } from '@/lib';
-import MediaUpload from '../shared/MediaFilepload';
+import { toast } from 'sonner';
 
 const vehicleTypeOptions = [
   { value: "CAR", label: "Car" },
@@ -23,7 +23,13 @@ const vehicleTypeOptions = [
   { value: "TRUCK", label: "Truck" },
   { value: "VAN", label: "Van" },
   { value: "COUPE", label: "Coupe" },
+  { value: "HATCHBACK", label: "Hatchback" },
+  { value: "WAGON", label: "Wagon" },
+  { value: "CONVERTIBLE", label: "Convertible" },
+  { value: "MOTORCYCLE", label: "Motorcycle" },
+  { value: "OTHER", label: "Other" },
 ];
+
 
 const transmissionOptions = [
   { value: "Automatic", label: "Automatic" },
@@ -46,6 +52,15 @@ const statusOptions = [
   { value: "PENDING", label: "Pending" },
 ];
 
+const availabilityOptions = [
+  { value: "IN_STOCK", label: "In Stock" },
+  { value: "IN_TRANSIT", label: "In Transit" },
+  { value: "AT_PORT", label: "At Port" },
+  { value: "READY_FOR_PICKUP", label: "Ready for Pickup" },
+  { value: "OUT_OF_STOCK", label: "Out of Stock" },
+];
+
+
 interface AddCarModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -55,7 +70,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   const createVehicle = useCreateVehicle();
 
   const { value: vin, error: vinError, handleChange: handleVinChange } =
-    useField('', RequiredSchema('VIN'));
+    useField('', VinSchema);
 
   const { value: make, error: makeError, handleChange: handleMakeChange } =
     useField('', MakeSchema);
@@ -93,7 +108,10 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   const [status, setStatus] = useState<string>("AVAILABLE");
   const [statusError, setStatusError] = useState('');
 
-  const [image, setImage] = useState<File | null>(null);
+  const [availability, setAvailability] = useState<string>("IN_STOCK");
+
+  const [imageUrls, setImageUrls] = useState<string[]>([""]);
+  const [uploading, setUploading] = useState(false);
   const [featured, setFeatured] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [isHidden, setIsHidden] = useState(false);
@@ -105,6 +123,19 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
   };
+
+
+  const handleImageChange = (index: number, value: string) => {
+    const updated = [...imageUrls];
+    updated[index] = value;
+    setImageUrls(updated);
+  };
+
+  const addImageField = () => setImageUrls([...imageUrls, ""]);
+  const removeImageField = (index: number) =>
+    setImageUrls(imageUrls.filter((_, i) => i !== index));
+
+
 
   const validateForm = () => {
     let isValid = true;
@@ -130,65 +161,76 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
       !yearError && !priceError;
   };
 
-  const handleSubmit = () => {
+  const resetForm = () => {
+    handleVinChange({ target: { value: '' } } as any);
+    handleMakeChange({ target: { value: '' } } as any);
+    handleModelChange({ target: { value: '' } } as any);
+    handleYearChange({ target: { value: String(new Date().getFullYear()) } } as any);
+    handlePriceChange({ target: { value: '' } } as any);
+    handleOriginalPriceChange({ target: { value: '' } } as any);
+    handleMileageChange({ target: { value: '0' } } as any);
+    setVehicleType('');
+    setTransmission('');
+    setFuelType('');
+    setStatus('AVAILABLE');
+    setAvailability('IN_STOCK');
+    setImageUrls([""]);
+    setFeatured(false);
+    setIsActive(true);
+    setIsHidden(false);
+  };
+
+  const handleSubmit = async () => {
     if (!validateForm()) {
       return;
     }
 
-    const formData = new FormData();
+    try {
+      setUploading(true);
 
-    // Required fields
-    formData.append('vin', vin);
-    formData.append('slug', generateSlug(make, model, year, vin));
-    formData.append('make', make);
-    formData.append('model', model);
-    formData.append('year', year);
-    formData.append('vehicleType', vehicleType);
-    formData.append('priceUsd', price);
-    formData.append('transmission', transmission);
-    formData.append('fuelType', fuelType);
-    formData.append('source', 'MANUAL');
-    formData.append('status', status);
 
-    // Optional fields
-    if (originalPrice) {
-      formData.append('originalPriceUsd', originalPrice);
+      // Create the payload matching the API format
+      const payload = {
+        vin,
+        slug: generateSlug(make, model, year, vin),
+        make,
+        model,
+        year: Number(year),
+        vehicleType,
+        priceUsd: Number(price),
+        transmission,
+        fuelType,
+        source: 'MANUAL',
+        status,
+        availability,
+        featured,
+        isActive,
+        isHidden,
+        ...(originalPrice ? { originalPriceUsd: Number(originalPrice) } : {}),
+        ...(mileage ? { mileage: Number(mileage) } : {}),
+        ...(imageUrls.filter(Boolean).length
+          ? { images: imageUrls.filter(url => url.trim() !== "") }
+          : {}),
+      };
+
+
+      // Send as JSON, not FormData
+      createVehicle.mutate(payload, {
+        onSuccess: () => {
+          onOpenChange(false);
+          resetForm();
+        },
+        onError: (error: any) => {
+          console.error('Create vehicle error:', error);
+          toast.error(error?.response?.data?.message || 'Failed to create vehicle');
+        },
+      });
+    } catch (error) {
+      console.error('Submit error:', error);
+      toast.error('Failed to upload images');
+    } finally {
+      setUploading(false);
     }
-    if (mileage) {
-      formData.append('mileage', mileage);
-    }
-
-    // Boolean fields
-    formData.append('featured', String(featured));
-    formData.append('isActive', String(isActive));
-    formData.append('isHidden', String(isHidden));
-
-    // Image
-    if (image) {
-      formData.append('images', image);
-    }
-
-    createVehicle.mutate(formData, {
-      onSuccess: () => {
-        onOpenChange(false);
-        // Reset form
-        handleVinChange({ target: { value: '' } } as any);
-        handleMakeChange({ target: { value: '' } } as any);
-        handleModelChange({ target: { value: '' } } as any);
-        handleYearChange({ target: { value: String(new Date().getFullYear()) } } as any);
-        handlePriceChange({ target: { value: '' } } as any);
-        handleOriginalPriceChange({ target: { value: '' } } as any);
-        handleMileageChange({ target: { value: '0' } } as any);
-        setVehicleType('');
-        setTransmission('');
-        setFuelType('');
-        setStatus('AVAILABLE');
-        setImage(null);
-        setFeatured(false);
-        setIsActive(true);
-        setIsHidden(false);
-      },
-    });
   };
 
   return (
@@ -201,7 +243,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
       showFooter
       onConfirm={handleSubmit}
       confirmText="Add Vehicle"
-      isLoading={createVehicle.isPending}
+      isLoading={createVehicle.isPending || uploading}
     >
       <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -360,13 +402,72 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
             required
             reqValue="*"
           />
+
+          <SelectField
+            label="Availability"
+            htmlFor="availability"
+            id="availability"
+            placeholder="Select Availability"
+            value={availability}
+            onChange={setAvailability}
+            options={availabilityOptions}
+          />
         </div>
 
-        <MediaUpload
-          onFileSelect={(file) => {
-            setImage(file);
-          }}
-        />
+        {/* Image Upload Section */}
+        {/* Image URL Section */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Image URLs</label>
+
+          {imageUrls.map((url, index) => (
+            <div key={index} className="flex gap-2">
+              <input
+                type="url"
+                placeholder="https://example.com/car.jpg"
+                value={url}
+                onChange={(e) => handleImageChange(index, e.target.value)}
+                className="flex-1 border rounded px-3 py-2 text-sm"
+              />
+              {imageUrls.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeImageField(index)}
+                  className="text-red-500 text-sm"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={addImageField}
+            className="text-sm text-blue-600"
+          >
+            + Add another image
+          </button>
+
+          <p className="text-xs text-muted-foreground">
+            Paste direct image links. First image will be the cover.
+          </p>
+        </div>
+
+        {/* <div className="space-y-2">
+          <MediaUpload
+            onFileSelect={handleImagesSelect}
+            maxFiles={5}
+          />
+          {images.length > 0 && (
+            <p className="text-xs text-gray-500">
+              {images.length} image{images.length > 1 ? 's' : ''} selected.
+              The first image will be used as the cover.
+            </p>
+          )}
+          <p className="text-xs text-amber-600">
+            Note: Images will be uploaded to the server before creating the vehicle.
+          </p>
+        </div> */}
 
         <div className="space-y-3">
           <div className="flex items-center justify-between p-4 border rounded-lg">

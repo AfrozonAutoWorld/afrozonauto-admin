@@ -21,10 +21,17 @@ export const vehicleKeys = {
 
 // Get all vehicles with filters
 export const useVehicles = (filters?: VehicleFilters) => {
+  // Add default limit of 10 if not specified
+  const filtersWithPagination = {
+    limit: 10,
+    page: 1,
+    ...filters,
+  };
+
   return useQuery({
-    queryKey: vehicleKeys.list(filters),
-    queryFn: () => vehicleQueries.getVehicles(filters),
-    select: (data) => data.data, // Return only the data object
+    queryKey: vehicleKeys.list(filtersWithPagination),
+    queryFn: () => vehicleQueries.getVehicles(filtersWithPagination),
+    select: (data) => data.data, // Return the data object with vehicles and meta
   });
 };
 
@@ -46,19 +53,27 @@ export const useVehicleBySlug = (slug: string, enabled = true) => {
   });
 };
 
-// Create vehicle mutation
+// Create vehicle mutation - now accepts both JSON and FormData
 export const useCreateVehicle = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: CreateVehiclePayload | FormData) =>
-      vehicleQueries.createVehicle(payload),
+    mutationFn: (payload: CreateVehiclePayload | FormData) => {
+      // If it's FormData, send as multipart
+      // If it's a regular object, send as JSON
+      return vehicleQueries.createVehicle(payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
       toast.success("Vehicle created successfully!");
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to create vehicle");
+      console.error("Create vehicle error:", error);
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to create vehicle";
+      toast.error(errorMessage);
     },
   });
 };

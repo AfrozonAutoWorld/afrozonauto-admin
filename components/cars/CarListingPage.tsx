@@ -70,7 +70,7 @@ export function CarsListingPage() {
     status: statusFilter !== 'all' ? statusFilter : undefined,
     vehicleType: vehicleTypeFilter !== 'all' ? vehicleTypeFilter : undefined,
     page: currentPage,
-    limit: 50,
+    limit: 10,
     includeApi: true,
   };
 
@@ -222,7 +222,7 @@ export function CarsListingPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[250px]">Vehicle</TableHead>
+                      <TableHead className="min-w-62.5">Vehicle</TableHead>
                       <TableHead>Price</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead className="hidden md:table-cell">Mileage</TableHead>
