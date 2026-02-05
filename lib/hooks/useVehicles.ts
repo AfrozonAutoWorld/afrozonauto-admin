@@ -3,10 +3,10 @@ import {
   vehicleQueries,
   type CreateVehiclePayload,
   type UpdateVehiclePayload,
-  type Vehicle,
   type VehicleFilters,
 } from "@/lib/api/queries";
 import { toast } from "sonner";
+import { AxiosError } from "axios";
 
 // Query Keys
 export const vehicleKeys = {
@@ -57,48 +57,56 @@ export const useVehicleBySlug = (slug: string, enabled = true) => {
 export const useCreateVehicle = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (payload: CreateVehiclePayload | FormData) => {
-      // If it's FormData, send as multipart
-      // If it's a regular object, send as JSON
-      return vehicleQueries.createVehicle(payload);
-    },
+  return useMutation<
+    unknown,
+    AxiosError<{ message?: string }>,
+    CreateVehiclePayload | FormData
+  >({
+    mutationFn: (payload) => vehicleQueries.createVehicle(payload),
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
       toast.success("Vehicle created successfully!");
     },
-    onError: (error: any) => {
+
+    onError: (error) => {
       console.error("Create vehicle error:", error);
+
       const errorMessage =
-        error?.response?.data?.message ||
-        error?.message ||
+        error.response?.data?.message ||
+        error.message ||
         "Failed to create vehicle";
+
       toast.error(errorMessage);
     },
   });
 };
 
-// Update vehicle mutation
+type UpdateVehicleVariables = {
+  id: string;
+  payload: UpdateVehiclePayload;
+};
+
 export const useUpdateVehicle = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: UpdateVehiclePayload | FormData;
-    }) => vehicleQueries.updateVehicle(id, payload),
-    onSuccess: (data, variables) => {
+  return useMutation<
+    unknown,
+    AxiosError<{ message?: string }>,
+    UpdateVehicleVariables
+  >({
+    mutationFn: ({ id, payload }) => vehicleQueries.updateVehicle(id, payload),
+
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
       queryClient.invalidateQueries({
         queryKey: vehicleKeys.detail(variables.id),
       });
       toast.success("Vehicle updated successfully!");
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to update vehicle");
+
+    onError: (error) => {
+      toast.error(error.response?.data?.message || "Failed to update vehicle");
     },
   });
 };
@@ -107,61 +115,15 @@ export const useUpdateVehicle = () => {
 export const useDeleteVehicle = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<unknown, AxiosError<{ message?: string }>, string>({
     mutationFn: (id: string) => vehicleQueries.deleteVehicle(id),
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
       queryClient.removeQueries({ queryKey: vehicleKeys.detail(id) });
       toast.success("Vehicle deleted successfully!");
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error(error?.response?.data?.message || "Failed to delete vehicle");
-    },
-  });
-};
-
-// Toggle featured mutation
-export const useToggleFeatured = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => vehicleQueries.toggleFeatured(id),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(data.id) });
-      toast.success(
-        data.featured
-          ? "Vehicle marked as featured!"
-          : "Vehicle removed from featured!",
-      );
-    },
-    onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to update featured status",
-      );
-    },
-  });
-};
-
-// Toggle availability mutation
-export const useToggleAvailability = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => vehicleQueries.toggleAvailability(id),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(data.id) });
-      toast.success(
-        data.status === "AVAILABLE"
-          ? "Vehicle marked as available!"
-          : "Vehicle marked as sold!",
-      );
-    },
-    onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to update availability",
-      );
     },
   });
 };

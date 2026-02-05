@@ -1,36 +1,143 @@
 import { apiClient } from "./client";
 
+type TransmissionType = "Automatic" | "Manual";
+type FuelType = "Hybrid" | "Regular Unleaded" | "Diesel" | "Electric";
+type DrivetrainType = "FWD" | "RWD" | "AWD" | "4WD";
+type VehicleStatus = "AVAILABLE" | "SOLD" | "PENDING" | "RESERVED";
+type ApiSyncStatus = "PENDING" | "SYNCED" | "FAILED";
+type VehicleSource = "API" | "MANUAL";
+
+export type VehicleType =
+  | "CAR"
+  | "SUV"
+  | "TRUCK"
+  | "VAN"
+  | "SEDAN"
+  | "COUPE"
+  | "HATCHBACK"
+  | "WAGON"
+  | "CONVERTIBLE"
+  | "MOTORCYCLE";
+
+interface VehicleDetails {
+  confidence?: number;
+  cylinders?: number;
+  doors?: number;
+  drivetrain: DrivetrainType;
+  engine: string;
+  exteriorColor?: string;
+  fuel: FuelType;
+  interiorColor?: string;
+  make: string;
+  model: string;
+  seats?: number;
+  squishVin: string;
+  transmission: TransmissionType;
+  trim?: string;
+  vin: string;
+  year: number;
+  baseInvoice?: number;
+  baseMsrp?: number;
+  bodyStyle?: string;
+  series?: string;
+  style?: string;
+  type?: string;
+}
+
+interface RetailListing {
+  carfaxUrl: string;
+  city: string;
+  cpo: boolean;
+  dealer: string;
+  miles: number;
+  photoCount: number;
+  price: number;
+  primaryImage: string;
+  state: string;
+  used: boolean;
+  vdp: string;
+  zip: string;
+}
+
+interface WholesaleListing {
+  miles?: number;
+  price?: number;
+  primaryImage?: string;
+  [key: string]: unknown;
+}
+interface ApiListing {
+  "@id": string;
+  vin: string;
+  createdAt: string;
+  location: [number, number];
+  online: boolean;
+  vehicle: VehicleDetails;
+  wholesaleListing: WholesaleListing | null;
+  retailListing: RetailListing | null;
+  history: unknown | null;
+}
+
+export interface VehicleLocation {
+  longitude: number;
+  latitude: number;
+}
+
+interface RetailListing {
+  carfaxUrl: string;
+  city: string;
+  cpo: boolean;
+  dealer: string;
+  miles: number;
+  photoCount: number;
+  price: number;
+  primaryImage: string;
+  state: string;
+  used: boolean;
+  vdp: string;
+  zip: string;
+}
+
+interface ApiData {
+  listing: ApiListing;
+  raw: ApiListing;
+  isTemporary: boolean;
+  cached: boolean;
+}
+
 export interface Vehicle {
-  id: string;
   vin: string;
   slug: string;
   make: string;
   model: string;
   year: number;
   priceUsd: number;
-  vehicleType: string;
-  transmission: string;
-  fuelType: string;
-  engineSize?: string;
-  drivetrain?: string;
-  dealerName?: string;
-  dealerState?: string;
-  dealerCity?: string;
-  dealerZipCode?: string;
+  vehicleType: VehicleType;
+  exteriorColor?: string;
+  interiorColor?: string;
+  transmission: TransmissionType;
+  fuelType: FuelType;
+  engineSize: string;
+  drivetrain: DrivetrainType;
+  dealerName: string;
+  dealerState: string;
+  dealerCity: string;
+  dealerZipCode: string;
   images: string[];
   features: string[];
-  source: string;
-  apiProvider?: string;
-  apiListingId?: string;
-  status: string;
+  source: VehicleSource;
+  apiProvider: string;
+  apiListingId: string;
+  status: VehicleStatus;
   isActive: boolean;
   isHidden: boolean;
-  featured?: boolean;
+  apiData: ApiData;
+  apiSyncStatus: ApiSyncStatus;
+  id: string;
   mileage?: number;
-  apiData?: any;
-  apiSyncStatus?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  horsepower?: number;
+  torque?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateVehiclePayload {
@@ -54,7 +161,9 @@ export interface CreateVehiclePayload {
   isHidden?: boolean;
 }
 
-export interface UpdateVehiclePayload extends Partial<CreateVehiclePayload> {}
+export type UpdateVehiclePayload = Partial<
+  Omit<CreateVehiclePayload, "vin" | "slug" | "source">
+>;
 
 export interface VehicleFilters {
   make?: string;

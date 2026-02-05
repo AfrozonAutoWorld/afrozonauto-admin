@@ -34,8 +34,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   useVehicles,
-  useToggleFeatured,
-  useToggleAvailability,
   useDeleteVehicle
 } from '@/lib/hooks/useVehicles';
 import {
@@ -45,7 +43,6 @@ import {
   Eye,
   Edit,
   Star,
-  Power,
   Car as CarIcon,
   Trash2
 } from 'lucide-react';
@@ -75,8 +72,6 @@ export function CarsListingPage() {
   };
 
   const { data, isLoading } = useVehicles(filters);
-  const toggleFeatured = useToggleFeatured();
-  const toggleAvailability = useToggleAvailability();
   const deleteVehicle = useDeleteVehicle();
 
   const vehicles = data?.data || [];
@@ -87,7 +82,7 @@ export function CarsListingPage() {
     total: meta?.total || 0,
     available: vehicles.filter(v => v.status === 'AVAILABLE').length,
     fromApi: meta?.fromApi || 0,
-    featured: vehicles.filter(v => v.featured).length,
+    featured: vehicles.filter(v => v.features).length,
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -263,7 +258,7 @@ export function CarsListingPage() {
                                   <span className="truncate">
                                     {vehicle.make} {vehicle.model}
                                   </span>
-                                  {vehicle.featured && (
+                                  {vehicle.features && (
                                     <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 shrink-0" />
                                   )}
                                 </div>
@@ -319,20 +314,6 @@ export function CarsListingPage() {
                                   Edit Vehicle
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => toggleFeatured.mutate(vehicle.id)}
-                                  disabled={toggleFeatured.isPending}
-                                >
-                                  <Star className="mr-2 h-4 w-4" />
-                                  {vehicle.featured ? 'Unfeature' : 'Feature'}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => toggleAvailability.mutate(vehicle.id)}
-                                  disabled={toggleAvailability.isPending}
-                                >
-                                  <Power className="mr-2 h-4 w-4" />
-                                  Mark as {vehicle.status === 'AVAILABLE' ? 'Sold' : 'Available'}
-                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   onClick={() => handleDelete(

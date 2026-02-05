@@ -187,7 +187,7 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const { isMobileSidebarOpen, closeMobileSidebar } = useUIStore();
 
   // Check if user is authenticated using NextAuth session

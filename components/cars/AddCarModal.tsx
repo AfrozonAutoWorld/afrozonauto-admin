@@ -161,23 +161,37 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
       !yearError && !priceError;
   };
 
+  type InputEvent = React.ChangeEvent<HTMLInputElement>;
+
+  const makeEvent = (value: string): InputEvent =>
+  ({
+    target: { value },
+  } as InputEvent);
+
+
   const resetForm = () => {
-    handleVinChange({ target: { value: '' } } as any);
-    handleMakeChange({ target: { value: '' } } as any);
-    handleModelChange({ target: { value: '' } } as any);
-    handleYearChange({ target: { value: String(new Date().getFullYear()) } } as any);
-    handlePriceChange({ target: { value: '' } } as any);
-    handleOriginalPriceChange({ target: { value: '' } } as any);
-    handleMileageChange({ target: { value: '0' } } as any);
+    handleVinChange(makeEvent(''));
+    handleMakeChange(makeEvent(''));
+    handleModelChange(makeEvent(''));
+    handleYearChange(makeEvent(String(new Date().getFullYear())));
+    handlePriceChange(makeEvent(''));
+    handleOriginalPriceChange(makeEvent(''));
+    handleMileageChange(makeEvent('0'));
+
     setVehicleType('');
     setTransmission('');
     setFuelType('');
     setStatus('AVAILABLE');
     setAvailability('IN_STOCK');
-    setImageUrls([""]);
+    setImageUrls(['']);
     setFeatured(false);
     setIsActive(true);
     setIsHidden(false);
+
+    setVehicleTypeError('');
+    setTransmissionError('');
+    setFuelTypeError('');
+    setStatusError('');
   };
 
   const handleSubmit = async () => {
@@ -220,9 +234,17 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
           onOpenChange(false);
           resetForm();
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
           console.error('Create vehicle error:', error);
-          toast.error(error?.response?.data?.message || 'Failed to create vehicle');
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Unexpected error occurred";
+          const errorMessage = message.includes("Network")
+            ? "Network error. Please check your internet connection."
+            : message;
+
+          toast.error(errorMessage || 'Failed to create vehicle');
         },
       });
     } catch (error) {

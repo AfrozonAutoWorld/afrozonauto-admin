@@ -97,11 +97,17 @@ export function LoginPage() {
         });
         // The useEffect above will handle the redirect
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+
       console.error("Login failed:", error);
-      const errorMessage = error?.message?.includes("NetworkError")
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unexpected error occurred";
+
+      const errorMessage = message.includes("Network")
         ? "Network error. Please check your internet connection."
-        : "Unexpected error occurred";
+        : message;
 
       setError(errorMessage);
       showToast({

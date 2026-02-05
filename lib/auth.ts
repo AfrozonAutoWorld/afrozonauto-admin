@@ -2,6 +2,7 @@ import { jwtDecode } from "jwt-decode";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { User } from "next-auth";
+import { JWT } from "next-auth/jwt";
 
 export const authOptions: NextAuthOptions = {
   pages: {
@@ -195,7 +196,7 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-async function refreshAccessToken(token: any) {
+async function refreshAccessToken(token: JWT) {
   try {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh-token`,
