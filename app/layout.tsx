@@ -5,6 +5,7 @@ import ReactQueryProvider from "@/providers/QueryProvider";
 import { Toaster } from "sonner";
 import { Sidebar } from "@/components/layout";
 import { Providers } from "@/providers/SessionProvider";
+import { AuthProvider } from "@/providers/AuthProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,13 +35,15 @@ export default function RootLayout({
       >
         <Providers>
           <ReactQueryProvider>
-            <div className="flex h-screen overflow-hidden">
-              <Sidebar />
-              <main className="flex-1 overflow-y-auto bg-background">
-                {children}
-                <Toaster />
-              </main>
-            </div>
+            <AuthProvider>
+              <div className="flex h-screen overflow-hidden">
+                <Sidebar />
+                <main className="flex-1 overflow-y-auto bg-background">
+                  {children}
+                  <Toaster />
+                </main>
+              </div>
+            </AuthProvider>
           </ReactQueryProvider>
         </Providers>
       </body>

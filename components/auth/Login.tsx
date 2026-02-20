@@ -7,14 +7,10 @@ import { AlertCircle } from 'lucide-react';
 import { CustomBtn, Logo } from '@/components/shared';
 import { FormField, PasswordField } from '@/components/Form';
 import { EmailSchema, PasswordSchema, useField } from '@/lib';
-import { signIn, useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { showToast } from '@/lib/showNotification';
-import { useRouter } from 'next/navigation';
 
 export function LoginPage() {
-  const router = useRouter();
-  const { data: session, status } = useSession();
-
   const { value: email, error: emailError, handleChange: handleEmailChange } = useField("", EmailSchema);
   const {
     value: password,
@@ -29,35 +25,6 @@ export function LoginPage() {
   useEffect(() => {
     setIsDisabled(!email || !password || !!passwordError || !!emailError);
   }, [email, emailError, password, passwordError]);
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (status === 'authenticated' && session?.user) {
-      const role = session.user.role;
-      const redirectPath = sessionStorage.getItem('redirectAfterLogin');
-
-      // Clear the stored redirect path
-      if (redirectPath) {
-        sessionStorage.removeItem('redirectAfterLogin');
-        router.push(redirectPath);
-        return;
-      }
-
-      // Default role-based routing
-      switch (role) {
-        case 'SUPER_ADMIN':
-        case 'ADMIN':
-        case 'BUYER':
-          router.push('/admin/dashboard');
-          break;
-        case 'OPERATION':
-          router.push('/operations/dashboard');
-          break;
-        default:
-          router.push('/login');
-      }
-    }
-  }, [status, session, router]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,44 +44,23 @@ export function LoginPage() {
 
       if (res.error === "CredentialsSignin") {
         setError("Invalid email or password");
-        showToast({
-          type: "error",
-          message: "Invalid email or password",
-          duration: 8000,
-        });
+        showToast({ type: "error", message: "Invalid email or password", duration: 8000 });
       } else if (res.error) {
         setError(res.error);
-        showToast({
-          type: "error",
-          message: res.error || "Unexpected server error",
-          duration: 8000,
-        });
+        showToast({ type: "error", message: res.error || "Unexpected server error", duration: 8000 });
       } else {
-        showToast({
-          type: "success",
-          message: "Login Successful",
-          duration: 3000,
-        });
-        // The useEffect above will handle the redirect
+        showToast({ type: "success", message: "Login Successful", duration: 3000 });
+        // AuthProvider in layout.tsx takes over routing from here
       }
     } catch (error: unknown) {
-
       console.error("Login failed:", error);
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unexpected error occurred";
-
+      const message = error instanceof Error ? error.message : "Unexpected error occurred";
       const errorMessage = message.includes("Network")
         ? "Network error. Please check your internet connection."
         : message;
 
       setError(errorMessage);
-      showToast({
-        type: "error",
-        message: errorMessage,
-        duration: 8000,
-      });
+      showToast({ type: "error", message: errorMessage, duration: 8000 });
     } finally {
       setIsLoading(false);
     }
@@ -149,7 +95,6 @@ export function LoginPage() {
                 reqValue="*"
                 className="text-sm"
               />
-
               <div>
                 <PasswordField
                   PasswordText="Password"

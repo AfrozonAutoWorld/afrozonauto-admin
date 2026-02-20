@@ -2,18 +2,15 @@ import axios from "axios";
 import { getSession } from "next-auth/react";
 
 export const apiClient = axios.create({
-  baseURL:
-    process.env.NEXT_PUBLIC_API_URL ||
-    "https://afrozonauto-backend.onrender.com/api",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://api.afrozonauto.com/api",
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Attach token dynamically before every request
 apiClient.interceptors.request.use(
   async (config) => {
-    const session = await getSession(); // ✅ allowed outside components
+    const session = await getSession();
     const token = session?.accessToken;
 
     if (token) {
@@ -25,7 +22,6 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Handle 401 globally
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
