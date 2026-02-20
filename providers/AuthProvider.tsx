@@ -31,19 +31,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (status === 'loading') return;
 
-    // Session expired or unauthenticated while on a protected route
     if (status === 'unauthenticated') {
       if (!isPublicRoute) {
-        // Save where user was so we can restore after re-login
         sessionStorage.setItem(REDIRECT_KEY, pathname);
         router.replace('/login');
       }
       return;
     }
 
-    // Authenticated
     if (status === 'authenticated' && session?.user) {
-      // Check for token error (expired refresh token)
       if ((session as { error?: string }).error === 'RefreshAccessTokenError') {
         if (!isPublicRoute) {
           sessionStorage.setItem(REDIRECT_KEY, pathname);
@@ -52,7 +48,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // If on a public route (e.g. /login), redirect to saved path or role home
       if (isPublicRoute && !hasRedirected.current) {
         hasRedirected.current = true;
         const saved = sessionStorage.getItem(REDIRECT_KEY);
@@ -66,17 +61,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [status, session, pathname, isPublicRoute, router]);
 
-  // Reset redirect guard when pathname changes
   useEffect(() => {
     hasRedirected.current = false;
   }, [pathname]);
 
-  // Show loader while session resolves
   if (status === 'loading') {
     return <Preloader message="Loading, hang tight..." variant="default" />;
   }
 
-  // Block protected pages from rendering while redirecting unauthenticated user
   if (status === 'unauthenticated' && !isPublicRoute) {
     return <Preloader message="Redirecting to login..." variant="default" />;
   }
