@@ -7,18 +7,47 @@ export default withAuth(
     const path = req.nextUrl.pathname;
 
     if (!token) {
-      // Store the attempted path for redirect after login
       const response = NextResponse.redirect(new URL("/login", req.url));
-      response.cookies.set("redirectAfterLogin", path, {
-        path: "/",
-        maxAge: 60 * 10, // 10 minutes
-      });
+      if (path !== "/") {
+        response.cookies.set("redirectAfterLogin", path, {
+          path: "/",
+          maxAge: 60 * 10, // 10 minutes
+        });
+      }
       return response;
     }
 
     const role = token.role;
 
-    // Admin routes - accessible by SUPER_ADMIN, ADMIN, and BUYER
+    if (path === "/") {
+      switch (role) {
+        case "SUPER_ADMIN":
+        case "ADMIN":
+        case "BUYER":
+          return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+        case "OPERATION":
+          return NextResponse.redirect(
+            new URL("/operations/dashboard", req.url),
+          );
+        default:
+          return NextResponse.redirect(new URL("/login", req.url));
+      }
+    }
+
+    // Redirect authenticated users away from /login
+    if (path === "/login") {
+      switch (role) {
+        case "SUPER_ADMIN":
+        case "ADMIN":
+        case "BUYER":
+          return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+        case "OPERATION":
+          return NextResponse.redirect(
+            new URL("/operations/dashboard", req.url),
+          );
+      }
+    }
+
     if (path.startsWith("/admin")) {
       if (role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "BUYER") {
         if (role === "OPERATION") {
@@ -30,7 +59,6 @@ export default withAuth(
       }
     }
 
-    // Operations routes - accessible only by OPERATION role
     if (path.startsWith("/operations")) {
       if (role !== "OPERATION") {
         if (role === "SUPER_ADMIN" || role === "ADMIN" || role === "BUYER") {
@@ -44,7 +72,11 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token, req }) => {
+        const path = req.nextUrl.pathname;
+        if (path === "/login") return true;
+        return !!token;
+      },
     },
     pages: {
       signIn: "/login",
@@ -53,5 +85,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/admin/:path*", "/operations/:path*"],
+  matcher: ["/", "/login", "/admin/:path*", "/operations/:path*"],
 };

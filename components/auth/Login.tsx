@@ -8,9 +8,11 @@ import { CustomBtn, Logo } from '@/components/shared';
 import { FormField, PasswordField } from '@/components/Form';
 import { EmailSchema, PasswordSchema, useField } from '@/lib';
 import { signIn } from "next-auth/react";
+import { useRouter } from 'next/navigation';
 import { showToast } from '@/lib/showNotification';
 
 export function LoginPage() {
+  const router = useRouter();
   const { value: email, error: emailError, handleChange: handleEmailChange } = useField("", EmailSchema);
   const {
     value: password,
@@ -50,7 +52,8 @@ export function LoginPage() {
         showToast({ type: "error", message: res.error || "Unexpected server error", duration: 8000 });
       } else {
         showToast({ type: "success", message: "Login Successful", duration: 3000 });
-        // AuthProvider in layout.tsx takes over routing from here
+        // Redirect to "/" — middleware reads the JWT role and routes to the right dashboard
+        router.replace('/');
       }
     } catch (error: unknown) {
       console.error("Login failed:", error);
