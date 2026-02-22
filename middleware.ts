@@ -8,10 +8,10 @@ export default withAuth(
 
     if (!token) {
       const response = NextResponse.redirect(new URL("/login", req.url));
-      if (path !== "/") {
+      if (path !== "/" && path !== "/login") {
         response.cookies.set("redirectAfterLogin", path, {
           path: "/",
-          maxAge: 60 * 10, // 10 minutes
+          maxAge: 60 * 10,
         });
       }
       return response;
@@ -19,35 +19,7 @@ export default withAuth(
 
     const role = token.role;
 
-    if (path === "/") {
-      switch (role) {
-        case "SUPER_ADMIN":
-        case "ADMIN":
-        case "BUYER":
-          return NextResponse.redirect(new URL("/admin/dashboard", req.url));
-        case "OPERATION":
-          return NextResponse.redirect(
-            new URL("/operations/dashboard", req.url),
-          );
-        default:
-          return NextResponse.redirect(new URL("/login", req.url));
-      }
-    }
-
-    // Redirect authenticated users away from /login
-    if (path === "/login") {
-      switch (role) {
-        case "SUPER_ADMIN":
-        case "ADMIN":
-        case "BUYER":
-          return NextResponse.redirect(new URL("/admin/dashboard", req.url));
-        case "OPERATION":
-          return NextResponse.redirect(
-            new URL("/operations/dashboard", req.url),
-          );
-      }
-    }
-
+    // Admin routes — accessible by SUPER_ADMIN, ADMIN, BUYER
     if (path.startsWith("/admin")) {
       if (role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "BUYER") {
         if (role === "OPERATION") {
@@ -59,6 +31,7 @@ export default withAuth(
       }
     }
 
+    // Operations routes — accessible only by OPERATION
     if (path.startsWith("/operations")) {
       if (role !== "OPERATION") {
         if (role === "SUPER_ADMIN" || role === "ADMIN" || role === "BUYER") {
@@ -72,9 +45,10 @@ export default withAuth(
   },
   {
     callbacks: {
+      // Only protect /admin and /operations — let /login and / pass through freely
       authorized: ({ token, req }) => {
         const path = req.nextUrl.pathname;
-        if (path === "/login") return true;
+        if (path === "/login" || path === "/") return true;
         return !!token;
       },
     },
@@ -85,5 +59,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/", "/login", "/admin/:path*", "/operations/:path*"],
+  matcher: ["/admin/:path*", "/operations/:path*"],
 };
