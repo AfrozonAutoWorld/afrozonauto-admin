@@ -7,9 +7,22 @@ import { AlertCircle } from 'lucide-react';
 import { CustomBtn, Logo } from '@/components/shared';
 import { FormField, PasswordField } from '@/components/Form';
 import { EmailSchema, PasswordSchema, useField } from '@/lib';
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter } from 'next/navigation';
 import { showToast } from '@/lib/showNotification';
+
+function getRoleBasedPath(role: string | undefined): string {
+  switch (role) {
+    case 'SUPER_ADMIN':
+    case 'ADMIN':
+    case 'BUYER':
+      return '/admin/dashboard';
+    case 'OPERATION':
+      return '/operations/dashboard';
+    default:
+      return '/admin/dashboard';
+  }
+}
 
 export function LoginPage() {
   const router = useRouter();
@@ -52,8 +65,11 @@ export function LoginPage() {
         showToast({ type: "error", message: res.error || "Unexpected server error", duration: 8000 });
       } else {
         showToast({ type: "success", message: "Login Successful", duration: 3000 });
-        // Redirect to "/" — middleware reads the JWT role and routes to the right dashboard
-        router.replace('/');
+
+        // getSession() reads the cookie that signIn() just set — no race condition
+        const session = await getSession();
+        const destination = getRoleBasedPath(session?.user?.role);
+        router.replace(destination);
       }
     } catch (error: unknown) {
       console.error("Login failed:", error);
