@@ -34,12 +34,18 @@ export function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const { data: users, isLoading } = useUsers();
+  const [page, setPage] = useState(1);
+  const limit = 10;
+  const { data, isLoading } = useUsers({ page, limit });
   const [addUserModal, setAddUserModal] = useState(false);
 
   const toggleStatus = useToggleUserStatus();
 
-  const filteredUsers = users?.filter(user =>
+  const users = data?.items || [];
+  const meta = data?.meta;
+  const totalPages = meta?.pages ?? 1;
+
+  const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.country.toLowerCase().includes(searchQuery.toLowerCase())
@@ -71,11 +77,11 @@ export function UsersPage() {
         <div className="p-6 space-y-6">
 
           {/* Summary Stats */}
-          {users && (
+          {users.length > 0 && (
             <div className="grid gap-4 md:grid-cols-3">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-2xl font-bold">{users.length}</div>
+                  <div className="text-2xl font-bold">{meta?.total ?? users.length}</div>
                   <p className="text-sm text-muted-foreground">Total Users</p>
                 </CardContent>
               </Card>
@@ -129,7 +135,7 @@ export function UsersPage() {
             <CardContent className="p-0">
               {isLoading ? (
                 <LoadingSpinner text="Loading users..." />
-              ) : filteredUsers && filteredUsers.length > 0 ? (
+              ) : filteredUsers.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -169,7 +175,7 @@ export function UsersPage() {
                         </TableCell>
                         <TableCell>{user.country}</TableCell>
                         <TableCell>
-                          <StatusBadge status={user.status} />
+                          <StatusBadge status={user.role} />
                         </TableCell>
                         <TableCell>
                           <span className="font-medium">{user.totalOrders}</span>
@@ -228,6 +234,31 @@ export function UsersPage() {
               )}
             </CardContent>
           </Card>
+          {totalPages > 1 && (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-2">
+              <div className="text-sm text-muted-foreground">
+                Page {page} of {totalPages} • Total {meta?.total ?? users.length}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={page <= 1}
+                  className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={page >= totalPages}
+                  className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
 
 
         </div>

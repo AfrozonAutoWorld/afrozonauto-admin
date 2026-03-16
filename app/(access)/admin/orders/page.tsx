@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,7 +23,11 @@ import { Button } from '@nextui-org/react';
 
 export default function AllOrdersPage() {
   const router = useRouter();
-  const { data: orders, isLoading } = useOrders();
+  const [page, setPage] = useState(1);
+  const limit = 10;
+  const { data, isLoading } = useOrders({ page, limit });
+  const orders = data?.items || [];
+  const totalPages = data?.meta.pages ?? 1;
 
 
   return (
@@ -44,7 +49,7 @@ export default function AllOrdersPage() {
           <CardContent className="p-0">
             {isLoading ? (
               <LoadingSpinner text="Loading pending orders..." />
-            ) : orders && orders?.length > 0 ? (
+            ) : orders.length > 0 ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -112,6 +117,31 @@ export default function AllOrdersPage() {
             )}
           </CardContent>
         </Card>
+        {totalPages > 1 && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-muted-foreground">
+              Page {page} of {totalPages} • Total {data?.meta.total ?? orders.length}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onPress={() => setPage((prev) => Math.max(1, prev - 1))}
+                isDisabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onPress={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                isDisabled={page >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-export type UserRole = "super_admin" | "operations_admin";
+export type UserRole = "super_admin" | "operations_admin" | "SELLER" | "BUYER";
 
 export type OrderStatus = "pending" | "paid" | "cancelled";
 
@@ -74,9 +74,14 @@ export interface DashboardStats {
   totalCars: number;
   totalOrders: number;
   totalRevenue: number;
-  pendingOrders: number;
-  apiCars: number;
-  manualCars: number;
+  pendingOrdersCount: number;
+  carBreakdown: {
+    api: number;
+    manual: number;
+  };
+  revenueThisMonth: number;
+  revenueLastMonth: number;
+  revenueChangePercent: number;
 }
 
 export interface Activity {
@@ -86,6 +91,16 @@ export interface Activity {
   timestamp: string;
   userId?: string;
   userName?: string;
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  status: string;
+  title: string;
+  message: string;
+  recipient: string;
+  createdAt: string;
 }
 
 export interface AddCarForm {

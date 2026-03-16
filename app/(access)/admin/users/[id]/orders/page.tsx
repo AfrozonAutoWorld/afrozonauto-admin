@@ -29,10 +29,11 @@ export default function UserOrdersPage({ params }: { params: Promise<{ id: strin
   const resolvedParams = use(params);
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useUser(resolvedParams.id);
-  const { data: allOrders, isLoading: ordersLoading } = useOrders();
+  const { data: allOrdersData, isLoading: ordersLoading } = useOrders();
+  const allOrders = allOrdersData?.items || [];
 
   // Filter orders for this user
-  const userOrders = allOrders?.filter(order => order.userId === resolvedParams.id) || [];
+  const userOrders = allOrders.filter(order => order.userId === resolvedParams.id);
 
   if (userLoading || ordersLoading) {
     return (

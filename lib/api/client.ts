@@ -1,8 +1,10 @@
 import axios from "axios";
 import { getSession } from "next-auth/react";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://api.afrozonauto.com/api",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },

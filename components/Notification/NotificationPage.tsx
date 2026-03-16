@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import {
   Table,
   TableBody,
@@ -21,13 +23,16 @@ import {
 } from '@/components/ui/select';
 import { Bell, Mail, ShoppingCart, DollarSign, CheckCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
-import { mockNotifications } from '@/lib/mock/data';
+import { useNotifications } from '@/lib/hooks';
 
 export default function NotificationsPage() {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const filteredNotifications = mockNotifications.filter(notif => {
+  const { data, isLoading } = useNotifications();
+  const notifications = data?.items || [];
+
+  const filteredNotifications = notifications.filter(notif => {
     const matchesType = typeFilter === 'all' || notif.type === typeFilter;
     const matchesStatus = statusFilter === 'all' || notif.status === statusFilter;
     return matchesType && matchesStatus;
@@ -61,7 +66,7 @@ export default function NotificationsPage() {
                   <Mail className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{mockNotifications.length}</div>
+                  <div className="text-2xl font-bold">{data?.meta.total ?? notifications.length}</div>
                   <p className="text-sm text-muted-foreground">Total Sent</p>
                 </div>
               </div>
@@ -76,7 +81,7 @@ export default function NotificationsPage() {
                 </div>
                 <div>
                   <div className="text-2xl font-bold">
-                    {mockNotifications.filter(n => n.status === 'sent').length}
+                    {notifications.filter(n => n.status === 'sent').length}
                   </div>
                   <p className="text-sm text-muted-foreground">Delivered</p>
                 </div>
@@ -92,7 +97,7 @@ export default function NotificationsPage() {
                 </div>
                 <div>
                   <div className="text-2xl font-bold">
-                    {mockNotifications.filter(n => n.status === 'pending').length}
+                    {notifications.filter(n => n.status === 'pending').length}
                   </div>
                   <p className="text-sm text-muted-foreground">Pending</p>
                 </div>
@@ -108,7 +113,7 @@ export default function NotificationsPage() {
                 </div>
                 <div>
                   <div className="text-2xl font-bold">
-                    {mockNotifications.filter(n => n.type === 'order_placed').length}
+                    {notifications.filter(n => n.type === 'order_placed').length}
                   </div>
                   <p className="text-sm text-muted-foreground">Order Alerts</p>
                 </div>
@@ -149,9 +154,12 @@ export default function NotificationsPage() {
         {/* Notifications Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Email Notifications</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
+          <CardTitle>Email Notifications</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <LoadingSpinner text="Loading notifications..." />
+          ) : filteredNotifications.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -192,8 +200,15 @@ export default function NotificationsPage() {
                 </TableBody>
               </Table>
             </div>
-          </CardContent>
-        </Card>
+          ) : (
+            <EmptyState
+              icon={Bell}
+              title="No notifications"
+              description="No notifications match your filters"
+            />
+          )}
+        </CardContent>
+      </Card>
 
         {/* Info Card */}
         <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">

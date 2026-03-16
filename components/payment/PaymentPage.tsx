@@ -33,11 +33,16 @@ export default function PaymentsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [refundModalOpen, setRefundModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
-  const { data: payments, isLoading } = usePayments();
+  const { data, isLoading } = usePayments({ page, limit });
   const initiateRefund = useInitiateRefund();
 
-  const filteredPayments = payments?.filter(payment =>
+  const payments = data?.items || [];
+  const totalPages = data?.meta.pages ?? 1;
+
+  const filteredPayments = payments.filter(payment =>
     statusFilter === 'all' || payment.status === statusFilter
   );
 
@@ -74,7 +79,7 @@ export default function PaymentsPage() {
     }
   };
 
-  const payment = payments?.find(p => p.id === selectedPayment);
+  const payment = payments.find(p => p.id === selectedPayment);
 
   return (
     <div>
@@ -86,11 +91,11 @@ export default function PaymentsPage() {
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Filters */}
         {/* Summary Stats */}
-        {payments && (
+        {payments.length > 0 && (
           <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
             <Card>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold">{payments.length}</div>
+                <div className="text-2xl font-bold">{data?.meta.total ?? payments.length}</div>
                 <p className="text-sm text-muted-foreground">Total Transactions</p>
               </CardContent>
             </Card>
@@ -151,7 +156,7 @@ export default function PaymentsPage() {
           <CardContent className="p-0">
             {isLoading ? (
               <LoadingSpinner text="Loading payments..." />
-            ) : filteredPayments && filteredPayments.length > 0 ? (
+            ) : filteredPayments.length > 0 ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -228,7 +233,31 @@ export default function PaymentsPage() {
             )}
           </CardContent>
         </Card>
-
+        {totalPages > 1 && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-muted-foreground">
+              Page {page} of {totalPages} • Total {data?.meta.total ?? payments.length}
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                disabled={page <= 1}
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={page >= totalPages}
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
 

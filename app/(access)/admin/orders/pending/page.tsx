@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { useOrders } from '@/lib/hooks/useOrders';
+import { usePendingOrders } from '@/lib/hooks/useOrders';
 import { ShoppingCart } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -22,9 +22,8 @@ import { Button } from '@nextui-org/react';
 
 export default function PendingOrdersPage() {
   const router = useRouter();
-  const { data: orders, isLoading } = useOrders();
-
-  const pendingOrders = orders?.filter(order => order.status === 'pending') || [];
+  const { data, isLoading } = usePendingOrders();
+  const pendingOrders = data?.items || [];
 
   return (
     <div>

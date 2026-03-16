@@ -41,9 +41,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
   useEffect(() => {
     const fetchCountries = async () => {
       try {
-        const res = await fetch(
-          "https://restcountries.com/v3.1/all?fields=name"
-        );
+        const res = await fetch("https://restcountries.com/v3.1/all?fields=name");
 
         const data: RestCountry[] = await res.json();
 

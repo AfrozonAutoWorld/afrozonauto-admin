@@ -1,4 +1,10 @@
 import { apiClient } from "./client";
+import { API_ROUTES } from "./endpoints";
+import {
+  normalizePaginatedPayload,
+  type PaginatedResult,
+} from "./pagination";
+import { pickEntity, unwrapApiData, type ApiResponse } from "./response";
 
 type TransmissionType = "Automatic" | "Manual";
 type FuelType = "Hybrid" | "Regular Unleaded" | "Diesel" | "Electric";
@@ -128,6 +134,8 @@ export interface Vehicle {
   apiProvider: string;
   apiListingId: string;
   status: VehicleStatus;
+  featured?: boolean;
+  availability?: string;
   isActive: boolean;
   isHidden: boolean;
   apiData: ApiData;
@@ -184,21 +192,7 @@ export interface VehicleFilters {
   source?: string;
 }
 
-export interface VehiclesResponse {
-  success: boolean;
-  message: string;
-  data: {
-    data: Vehicle[];
-    meta: {
-      page: number;
-      limit: number;
-      total: number;
-      pages: number;
-      fromApi?: number;
-    };
-  };
-  timestamp: string;
-}
+export type VehiclesResponse = PaginatedResult<Vehicle>;
 
 // API Query Functions
 export const vehicleQueries = {
@@ -214,33 +208,47 @@ export const vehicleQueries = {
       });
     }
 
-    const response = await apiClient.get(`/vehicles?${params.toString()}`);
-    return response.data;
+    const response = await apiClient.get<ApiResponse<Record<string, unknown>>>(
+      `${API_ROUTES.vehicles.base}?${params.toString()}`,
+    );
+    const payload = unwrapApiData(response.data) as Record<string, unknown>;
+    return normalizePaginatedPayload<Vehicle>(payload, "vehicles");
   },
 
   // Get single vehicle by ID
   getVehicleById: async (id: string): Promise<Vehicle> => {
-    const response = await apiClient.get(`/vehicles/${id}`);
-    return response.data.data;
+    const response = await apiClient.get<ApiResponse<unknown>>(
+      API_ROUTES.vehicles.byId(id),
+    );
+    const payload = unwrapApiData(response.data);
+    return pickEntity<Vehicle>(payload, "vehicle");
   },
 
   // Get vehicle by slug
   getVehicleBySlug: async (slug: string): Promise<Vehicle> => {
-    const response = await apiClient.get(`/vehicles/slug/${slug}`);
-    return response.data.data;
+    const response = await apiClient.get<ApiResponse<unknown>>(
+      API_ROUTES.vehicles.bySlug(slug),
+    );
+    const payload = unwrapApiData(response.data);
+    return pickEntity<Vehicle>(payload, "vehicle");
   },
 
   // Create new vehicle
   createVehicle: async (
     payload: CreateVehiclePayload | FormData,
   ): Promise<Vehicle> => {
-    const response = await apiClient.post("/vehicles", payload, {
-      headers:
-        payload instanceof FormData
-          ? { "Content-Type": "multipart/form-data" }
-          : { "Content-Type": "application/json" },
-    });
-    return response.data.data;
+    const response = await apiClient.post<ApiResponse<unknown>>(
+      API_ROUTES.vehicles.base,
+      payload,
+      {
+        headers:
+          payload instanceof FormData
+            ? { "Content-Type": "multipart/form-data" }
+            : { "Content-Type": "application/json" },
+      },
+    );
+    const responsePayload = unwrapApiData(response.data);
+    return pickEntity<Vehicle>(responsePayload, "vehicle");
   },
 
   // Update vehicle
@@ -248,29 +256,40 @@ export const vehicleQueries = {
     id: string,
     payload: UpdateVehiclePayload | FormData,
   ): Promise<Vehicle> => {
-    const response = await apiClient.put(`/vehicles/${id}`, payload, {
-      headers:
-        payload instanceof FormData
-          ? { "Content-Type": "multipart/form-data" }
-          : { "Content-Type": "application/json" },
-    });
-    return response.data.data;
+    const response = await apiClient.put<ApiResponse<unknown>>(
+      API_ROUTES.vehicles.byId(id),
+      payload,
+      {
+        headers:
+          payload instanceof FormData
+            ? { "Content-Type": "multipart/form-data" }
+            : { "Content-Type": "application/json" },
+      },
+    );
+    const responsePayload = unwrapApiData(response.data);
+    return pickEntity<Vehicle>(responsePayload, "vehicle");
   },
 
   // Delete vehicle
   deleteVehicle: async (id: string): Promise<void> => {
-    await apiClient.delete(`/vehicles/${id}`);
+    await apiClient.delete(API_ROUTES.vehicles.byId(id));
   },
 
   // Toggle featured status
   toggleFeatured: async (id: string): Promise<Vehicle> => {
-    const response = await apiClient.patch(`/vehicles/${id}/featured`);
-    return response.data.data;
+    const response = await apiClient.patch<ApiResponse<unknown>>(
+      API_ROUTES.vehicles.featured(id),
+    );
+    const responsePayload = unwrapApiData(response.data);
+    return pickEntity<Vehicle>(responsePayload, "vehicle");
   },
 
   // Toggle availability
   toggleAvailability: async (id: string): Promise<Vehicle> => {
-    const response = await apiClient.patch(`/vehicles/${id}/availability`);
-    return response.data.data;
+    const response = await apiClient.patch<ApiResponse<unknown>>(
+      API_ROUTES.vehicles.availability(id),
+    );
+    const responsePayload = unwrapApiData(response.data);
+    return pickEntity<Vehicle>(responsePayload, "vehicle");
   },
 };

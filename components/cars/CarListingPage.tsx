@@ -74,7 +74,7 @@ export function CarsListingPage() {
   const { data, isLoading } = useVehicles(filters);
   const deleteVehicle = useDeleteVehicle();
 
-  const vehicles = data?.data || [];
+  const vehicles = data?.items || [];
   const meta = data?.meta;
 
   // Calculate stats
@@ -82,7 +82,7 @@ export function CarsListingPage() {
     total: meta?.total || 0,
     available: vehicles.filter(v => v.status === 'AVAILABLE').length,
     fromApi: meta?.fromApi || 0,
-    featured: vehicles.filter(v => v.features).length,
+    featured: vehicles.filter(v => v.featured).length,
   };
 
   const handleDelete = (id: string, name: string) => {

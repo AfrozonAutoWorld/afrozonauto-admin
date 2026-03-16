@@ -31,7 +31,6 @@ export const useVehicles = (filters?: VehicleFilters) => {
   return useQuery({
     queryKey: vehicleKeys.list(filtersWithPagination),
     queryFn: () => vehicleQueries.getVehicles(filtersWithPagination),
-    select: (data) => data.data, // Return the data object with vehicles and meta
   });
 };
 
@@ -124,6 +123,40 @@ export const useDeleteVehicle = () => {
     },
     onError: (error) => {
       toast.error(error?.response?.data?.message || "Failed to delete vehicle");
+    },
+  });
+};
+
+// Toggle featured status
+export const useToggleFeatured = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Vehicle, AxiosError<{ message?: string }>, string>({
+    mutationFn: (id: string) => vehicleQueries.toggleFeatured(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(id) });
+      toast.success("Vehicle featured status updated!");
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to update featured");
+    },
+  });
+};
+
+// Toggle availability status
+export const useToggleAvailability = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Vehicle, AxiosError<{ message?: string }>, string>({
+    mutationFn: (id: string) => vehicleQueries.toggleAvailability(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(id) });
+      toast.success("Vehicle availability updated!");
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to update availability");
     },
   });
 };

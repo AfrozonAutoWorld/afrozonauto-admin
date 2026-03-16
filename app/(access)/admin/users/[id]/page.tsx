@@ -36,10 +36,17 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
   const resolvedParams = use(params);
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useUser(resolvedParams.id);
-  const { data: allOrders } = useOrders();
+  const { data: allOrdersData } = useOrders();
+  const allOrders = allOrdersData?.items || [];
 
   // Filter orders for this user
-  const userOrders = allOrders?.filter(order => order.userId === resolvedParams.id) || [];
+  const userOrders = allOrders.filter(order => order.userId === resolvedParams.id);
+
+  const formatRole = (role: string) =>
+    role
+      .replace(/_/g, " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
 
   if (userLoading) {
     return (
@@ -128,7 +135,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
                   <div className="flex items-center gap-2">
                     <Shield className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">
-                      {user.role === 'super_admin' ? 'Super Admin' : 'Operations Admin'}
+                    {formatRole(user.role)}
                     </span>
                   </div>
 
