@@ -64,7 +64,7 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
           <CustomBtn
             variant="ghost"
             icon={ArrowLeft}
-            onClick={() => router.push('/cars')}
+            onClick={() => router.back()}
           >
             Back to Cars
           </CustomBtn>
@@ -72,7 +72,7 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
           <div className="flex gap-2">
             <CustomBtn
               variant="bordered"
-              onClick={() => toggleFeatured.mutate(car.id)}
+              onClick={() => toggleFeatured.mutate({ id: car.id, featured: !isFeatured })}
               isLoading={toggleFeatured.isPending}
             >
               <Star className={`mr-2 h-4 w-4 ${isFeatured ? 'fill-yellow-500 text-yellow-500' : ''}`} />
@@ -81,7 +81,12 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
 
             <CustomBtn
               variant="bordered"
-              onClick={() => toggleAvailability.mutate(car.id)}
+              onClick={() =>
+                toggleAvailability.mutate({
+                  id: car.id,
+                  status: isAvailable ? 'SOLD' : 'AVAILABLE',
+                })
+              }
               isLoading={toggleAvailability.isPending}
             >
               Mark as {isAvailable ? 'Sold' : 'Available'}

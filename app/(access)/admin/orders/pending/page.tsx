@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -22,8 +23,12 @@ import { Button } from '@nextui-org/react';
 
 export default function PendingOrdersPage() {
   const router = useRouter();
-  const { data, isLoading } = usePendingOrders();
+  const [page, setPage] = useState(1);
+  const limit = 10;
+  const { data, isLoading } = usePendingOrders({ page, limit });
+
   const pendingOrders = data?.items || [];
+  const totalPages = data?.meta.pages ?? 1;
 
   return (
     <div>
@@ -35,7 +40,7 @@ export default function PendingOrdersPage() {
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Button
           variant="ghost"
-          onPress={() => router.push('/admin/orders')}
+          onPress={() => router.back()}
         >
           Back
         </Button>
@@ -111,7 +116,38 @@ export default function PendingOrdersPage() {
               />
             )}
           </CardContent>
+
+
+          {totalPages > 1 && (
+            <CardFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-muted-foreground">
+                Page {page} of {totalPages} • Total {data?.meta.total ?? pendingOrders.length}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => setPage((prev) => Math.max(1, prev - 1))}
+                  isDisabled={page <= 1}
+                  className='cursor-pointer'
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  isDisabled={page >= totalPages}
+                  className='cursor-pointer'
+                >
+                  Next
+                </Button>
+              </div>
+            </CardFooter>
+          )}
+
         </Card>
+
       </div>
     </div>
   );

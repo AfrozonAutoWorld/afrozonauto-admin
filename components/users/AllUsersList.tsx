@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Header } from '@/components/layout/Header';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { CustomBtn, StatusBadge, LoadingSpinner, EmptyState, ConfirmModal } from '@/components/shared'
 import {
@@ -44,6 +44,8 @@ export function UsersPage() {
   const users = data?.items || [];
   const meta = data?.meta;
   const totalPages = meta?.pages ?? 1;
+
+
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -233,32 +235,35 @@ export function UsersPage() {
                 />
               )}
             </CardContent>
+
+            {totalPages > 1 && (
+              <CardFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-2">
+                <div className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages} • Total {meta?.total ?? users.length}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    disabled={page <= 1}
+                    className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 cursor-pointer hover:bg-gray-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={page >= totalPages}
+                    className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 cursor-pointer hover:bg-gray-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </CardFooter>
+            )}
+
           </Card>
-          {totalPages > 1 && (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-2">
-              <div className="text-sm text-muted-foreground">
-                Page {page} of {totalPages} • Total {meta?.total ?? users.length}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                  disabled={page <= 1}
-                  className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={page >= totalPages}
-                  className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
+
 
 
         </div>

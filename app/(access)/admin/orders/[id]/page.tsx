@@ -60,7 +60,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
         <CustomBtn
           variant="ghost"
           icon={ArrowLeft}
-          onClick={() => router.push('/admin/orders')}
+          onClick={() => router.back()}
         >
           Back to Orders
         </CustomBtn>

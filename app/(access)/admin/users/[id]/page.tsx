@@ -83,7 +83,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
         <CustomBtn
           variant="ghost"
           icon={ArrowLeft}
-          onClick={() => router.push('/users')}
+          onClick={() => router.back()}
         >
           Back to Users
         </CustomBtn>

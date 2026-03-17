@@ -73,7 +73,7 @@ export default function UserOrdersPage({ params }: { params: Promise<{ id: strin
         <CustomBtn
           variant="ghost"
           icon={ArrowLeft}
-          onClick={() => router.push(`/admin/users/${user.id}`)}
+          onClick={() => router.back()}
         >
           Back to Profile
         </CustomBtn>

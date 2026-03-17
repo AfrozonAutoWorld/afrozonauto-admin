@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { CustomBtn } from '@/components/shared/CustomBtn';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
@@ -144,7 +144,7 @@ export default function PaymentsPage() {
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="failed">Failed</SelectItem>
-                  <SelectItem value="refunded">Refunded</SelectItem>
+
                 </SelectContent>
               </Select>
             </div>
@@ -167,7 +167,6 @@ export default function PaymentsPage() {
                       <TableHead>Method</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -183,8 +182,10 @@ export default function PaymentsPage() {
                           {payment.orderId}
                         </TableCell>
                         <TableCell className="font-medium">
-                          ${payment.amount.toLocaleString()}
-                          {payment.refundAmount && (
+                          {typeof payment.amount === 'number'
+                            ? `$${payment.amount.toLocaleString()}`
+                            : '—'}
+                          {typeof payment.refundAmount === 'number' && (
                             <div className="text-xs text-red-600">
                               Refunded: ${payment.refundAmount.toLocaleString()}
                             </div>
@@ -193,7 +194,11 @@ export default function PaymentsPage() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {getPaymentMethodIcon(payment.method)}
-                            <span className="capitalize">{payment.method.replace('_', ' ')}</span>
+                            <span className="capitalize">
+                              {typeof payment.method === 'string'
+                                ? payment.method.replace('_', ' ')
+                                : '—'}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -202,23 +207,7 @@ export default function PaymentsPage() {
                         <TableCell className="text-sm">
                           {format(new Date(payment.createdAt), 'MMM d, yyyy HH:mm')}
                         </TableCell>
-                        <TableCell>
-                          {payment.status === 'completed' && (
-                            <CustomBtn
-                              size="sm"
-                              variant="bordered"
-                              onClick={() => handleRefundClick(payment.id)}
-                            >
-                              <DollarSign className="h-3 w-3 mr-1" />
-                              Refund
-                            </CustomBtn>
-                          )}
-                          {payment.status === 'refunded' && payment.refundedAt && (
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(payment.refundedAt), 'MMM d, yyyy')}
-                            </span>
-                          )}
-                        </TableCell>
+
                       </TableRow>
                     ))}
                   </TableBody>
@@ -232,32 +221,35 @@ export default function PaymentsPage() {
               />
             )}
           </CardContent>
+
+          {totalPages > 1 && (
+            <CardFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-muted-foreground">
+                Page {page} of {totalPages} • Total {data?.meta.total ?? payments.length}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={page <= 1}
+                  className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={page >= totalPages}
+                  className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Next
+                </button>
+              </div>
+            </CardFooter>
+          )}
+
+
         </Card>
-        {totalPages > 1 && (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-muted-foreground">
-              Page {page} of {totalPages} • Total {data?.meta.total ?? payments.length}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                disabled={page <= 1}
-                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                disabled={page >= totalPages}
-                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
 
       </div>
 

@@ -4,13 +4,6 @@ export const API_ROUTES = {
     pendingOrder: "/admin/dashboard/pending-orders",
     recentActivity: "/admin/dashboard/recent-activity",
   },
-  vehicles: {
-    base: "/vehicles",
-    byId: (id: string) => `/vehicles/${id}`,
-    bySlug: (slug: string) => `/vehicles/slug/${slug}`,
-    featured: (id: string) => `/vehicles/${id}/featured`,
-    availability: (id: string) => `/vehicles/${id}/availability`,
-  },
   users: {
     getAllUsers: "/admin/users",
     getUserById: (id: string) => `/admin/users/${id}`,
@@ -39,11 +32,11 @@ export const API_ROUTES = {
     getASellerApplication: "/sellers/application",
   },
   sellerVehicles: {
-    getAllSellerVehicles: "/sellers-vehicle",
-    createSellerVehicle: "/sellers-vehicle/submit",
-    getSellerVehicleById: (id: string) => `/sellers-vehicles/${id}`,
-    deleteSellerVehicleById: (id: string) => `/sellers-vehicles/${id}`,
-    updateSellerVehicleById: (id: string) => `/sellers-vehicles/${id}/status`,
+    getAllSellerVehicles: "/seller-vehicles",
+    createSellerVehicle: "/seller-vehicles/submit",
+    getSellerVehicleById: (id: string) => `/seller-vehicles/${id}`,
+    deleteSellerVehicleById: (id: string) => `/seller-vehicles/${id}`,
+    updateSellerVehicleById: (id: string) => `/seller-vehicles/${id}/status`,
   },
   testimonials: {
     approveTestimonial: "/testimonial", //patch

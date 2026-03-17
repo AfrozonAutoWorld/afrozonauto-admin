@@ -86,3 +86,26 @@ export type ApiOrder = {
   depositAmountUsd?: number | null;
   totalLandedCostUsd?: number | null;
 };
+
+export type ApiPayment = {
+  id: string;
+  orderId?: string;
+  userId?: string;
+  amountUsd?: number | null;
+  amountLocal?: number | null;
+  localCurrency?: string | null;
+  paymentType?: string | null;
+  paymentMethod?: string | null;
+  paymentProvider?: string | null;
+  status?: string | null;
+  transactionRef?: string | null;
+  providerTransactionId?: string | null;
+  refundAmount?: number | null;
+  refundedAt?: string | null;
+  metadata?: {
+    calculation?: {
+      paymentAmount?: number | null;
+    } | null;
+  } | null;
+  createdAt?: string;
+};

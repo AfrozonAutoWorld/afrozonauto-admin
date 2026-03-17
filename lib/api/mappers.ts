@@ -1,5 +1,5 @@
-import type { Order, User } from "@/types";
-import type { ApiOrder, ApiUser } from "@/types/api";
+import type { Order, Payment, User } from "@/types";
+import type { ApiOrder, ApiPayment, ApiUser } from "@/types/api";
 
 const formatName = (user: ApiUser) => {
   const profileName = [user.profile?.firstName, user.profile?.lastName]
@@ -63,6 +63,15 @@ const mapPaymentStatus = (status?: string): Order["paymentStatus"] => {
   return "pending";
 };
 
+const mapPaymentStatusValue = (status?: string): Payment["status"] => {
+  if (!status) return "pending";
+  const normalized = status.toLowerCase();
+  if (normalized.includes("refund")) return "refunded";
+  if (normalized.includes("fail")) return "failed";
+  if (normalized.includes("paid") || normalized.includes("complete")) return "completed";
+  return "pending";
+};
+
 export const mapApiOrderToOrder = (order: ApiOrder): Order => {
   const vehicle = order.vehicleSnapshot ?? {};
   const amount =
@@ -100,5 +109,31 @@ export const mapApiOrderToOrder = (order: ApiOrder): Order => {
     createdAt: order.createdAt ?? new Date(0).toISOString(),
     updatedAt: order.updatedAt ?? order.createdAt ?? new Date(0).toISOString(),
     country: order.destinationCountry ?? "",
+  };
+};
+
+
+export const mapApiPaymentToPayment = (payment: ApiPayment): Payment => {
+  const amount =
+    payment.amountUsd ??
+    payment.amountLocal ??
+    payment.metadata?.calculation?.paymentAmount ??
+    0;
+  const method = payment.paymentMethod ?? payment.paymentProvider ?? "unknown";
+  const transactionId =
+    payment.transactionRef ??
+    payment.providerTransactionId ??
+    payment.id;
+
+  return {
+    id: payment.id,
+    orderId: payment.orderId ?? "",
+    amount,
+    status: mapPaymentStatusValue(payment.status ?? undefined),
+    method,
+    transactionId,
+    createdAt: payment.createdAt ?? new Date(0).toISOString(),
+    refundAmount: payment.refundAmount ?? undefined,
+    refundedAt: payment.refundedAt ?? undefined,
   };
 };

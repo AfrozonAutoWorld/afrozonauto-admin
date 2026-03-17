@@ -4,7 +4,7 @@ import {
   normalizePaginatedPayload,
   type PaginatedResult,
 } from "./pagination";
-import { pickEntity, unwrapApiData, type ApiResponse } from "./response";
+import { unwrapApiData, type ApiResponse } from "./response";
 
 type TransmissionType = "Automatic" | "Manual";
 type FuelType = "Hybrid" | "Regular Unleaded" | "Diesel" | "Electric";
@@ -148,6 +148,33 @@ export interface Vehicle {
   updatedAt: string;
 }
 
+
+const getResponseMeta = (
+  response: ApiResponse<Record<string, unknown>>,
+): Record<string, unknown> | undefined => {
+  return (response as unknown as { data?: { meta?: Record<string, unknown> } })
+    ?.data?.meta;
+};
+
+const attachMetaIfArray = <T>(
+  payload: Record<string, unknown> | T[],
+  meta?: Record<string, unknown>,
+) => {
+  if (Array.isArray(payload) && meta && typeof meta === "object") {
+    return { data: payload, meta };
+  }
+  return payload;
+};
+
+const pickVehicleEntity = (payload: unknown): Vehicle => {
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    if ("vehicle" in record) return record.vehicle as Vehicle;
+    if ("sellerVehicle" in record) return record.sellerVehicle as Vehicle;
+  }
+  return payload as Vehicle;
+};
+
 export interface CreateVehiclePayload {
   vin: string;
   slug: string;
@@ -209,28 +236,35 @@ export const vehicleQueries = {
     }
 
     const response = await apiClient.get<ApiResponse<Record<string, unknown>>>(
-      `${API_ROUTES.vehicles.base}?${params.toString()}`,
+      `${API_ROUTES.sellerVehicles.getAllSellerVehicles}?${params.toString()}`,
     );
-    const payload = unwrapApiData(response.data) as Record<string, unknown>;
-    return normalizePaginatedPayload<Vehicle>(payload, "vehicles");
+    const payload = unwrapApiData(response.data) as
+      | Record<string, unknown>
+      | Vehicle[];
+    const meta = getResponseMeta(response.data);
+    const normalized = normalizePaginatedPayload<Vehicle>(
+      attachMetaIfArray(payload, meta),
+      "sellerVehicles",
+    );
+    return normalized;
   },
 
   // Get single vehicle by ID
   getVehicleById: async (id: string): Promise<Vehicle> => {
     const response = await apiClient.get<ApiResponse<unknown>>(
-      API_ROUTES.vehicles.byId(id),
+      API_ROUTES.sellerVehicles.getSellerVehicleById(id),
     );
     const payload = unwrapApiData(response.data);
-    return pickEntity<Vehicle>(payload, "vehicle");
+    return pickVehicleEntity(payload);
   },
 
   // Get vehicle by slug
   getVehicleBySlug: async (slug: string): Promise<Vehicle> => {
     const response = await apiClient.get<ApiResponse<unknown>>(
-      API_ROUTES.vehicles.bySlug(slug),
+      API_ROUTES.sellerVehicles.getSellerVehicleById(slug),
     );
     const payload = unwrapApiData(response.data);
-    return pickEntity<Vehicle>(payload, "vehicle");
+    return pickVehicleEntity(payload);
   },
 
   // Create new vehicle
@@ -238,7 +272,7 @@ export const vehicleQueries = {
     payload: CreateVehiclePayload | FormData,
   ): Promise<Vehicle> => {
     const response = await apiClient.post<ApiResponse<unknown>>(
-      API_ROUTES.vehicles.base,
+      API_ROUTES.sellerVehicles.createSellerVehicle,
       payload,
       {
         headers:
@@ -248,7 +282,7 @@ export const vehicleQueries = {
       },
     );
     const responsePayload = unwrapApiData(response.data);
-    return pickEntity<Vehicle>(responsePayload, "vehicle");
+    return pickVehicleEntity(responsePayload);
   },
 
   // Update vehicle
@@ -256,8 +290,8 @@ export const vehicleQueries = {
     id: string,
     payload: UpdateVehiclePayload | FormData,
   ): Promise<Vehicle> => {
-    const response = await apiClient.put<ApiResponse<unknown>>(
-      API_ROUTES.vehicles.byId(id),
+    const response = await apiClient.patch<ApiResponse<unknown>>(
+      API_ROUTES.sellerVehicles.updateSellerVehicleById(id),
       payload,
       {
         headers:
@@ -267,29 +301,29 @@ export const vehicleQueries = {
       },
     );
     const responsePayload = unwrapApiData(response.data);
-    return pickEntity<Vehicle>(responsePayload, "vehicle");
+    return pickVehicleEntity(responsePayload);
   },
 
   // Delete vehicle
   deleteVehicle: async (id: string): Promise<void> => {
-    await apiClient.delete(API_ROUTES.vehicles.byId(id));
+    await apiClient.delete(API_ROUTES.sellerVehicles.deleteSellerVehicleById(id));
   },
 
   // Toggle featured status
   toggleFeatured: async (id: string): Promise<Vehicle> => {
     const response = await apiClient.patch<ApiResponse<unknown>>(
-      API_ROUTES.vehicles.featured(id),
+      API_ROUTES.sellerVehicles.updateSellerVehicleById(id),
     );
     const responsePayload = unwrapApiData(response.data);
-    return pickEntity<Vehicle>(responsePayload, "vehicle");
+    return pickVehicleEntity(responsePayload);
   },
 
   // Toggle availability
   toggleAvailability: async (id: string): Promise<Vehicle> => {
     const response = await apiClient.patch<ApiResponse<unknown>>(
-      API_ROUTES.vehicles.availability(id),
+      API_ROUTES.sellerVehicles.updateSellerVehicleById(id),
     );
     const responsePayload = unwrapApiData(response.data);
-    return pickEntity<Vehicle>(responsePayload, "vehicle");
+    return pickVehicleEntity(responsePayload);
   },
 };

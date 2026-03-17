@@ -3,6 +3,7 @@ import {
   vehicleQueries,
   type CreateVehiclePayload,
   type UpdateVehiclePayload,
+  type Vehicle,
   type VehicleFilters,
 } from "@/lib/api/queries";
 import { toast } from "sonner";
@@ -131,11 +132,16 @@ export const useDeleteVehicle = () => {
 export const useToggleFeatured = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Vehicle, AxiosError<{ message?: string }>, string>({
-    mutationFn: (id: string) => vehicleQueries.toggleFeatured(id),
-    onSuccess: (_, id) => {
+  return useMutation<
+    Vehicle,
+    AxiosError<{ message?: string }>,
+    { id: string; featured: boolean }
+  >({
+    mutationFn: ({ id, featured }) =>
+      vehicleQueries.updateVehicle(id, { featured }),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(variables.id) });
       toast.success("Vehicle featured status updated!");
     },
     onError: (error) => {
@@ -148,11 +154,15 @@ export const useToggleFeatured = () => {
 export const useToggleAvailability = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Vehicle, AxiosError<{ message?: string }>, string>({
-    mutationFn: (id: string) => vehicleQueries.toggleAvailability(id),
-    onSuccess: (_, id) => {
+  return useMutation<
+    Vehicle,
+    AxiosError<{ message?: string }>,
+    { id: string; status: string }
+  >({
+    mutationFn: ({ id, status }) => vehicleQueries.updateVehicle(id, { status }),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(variables.id) });
       toast.success("Vehicle availability updated!");
     },
     onError: (error) => {

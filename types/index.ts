@@ -62,7 +62,7 @@ export interface Payment {
   orderId: string;
   amount: number;
   status: "pending" | "completed" | "failed" | "refunded";
-  method: "card" | "bank_transfer" | "paypal";
+  method: string;
   transactionId: string;
   createdAt: string;
   refundAmount?: number;
