@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { CustomBtn, StatusBadge, LoadingSpinner, EmptyState, ConfirmModal } from '@/components/shared'
 import {
   Table,
@@ -23,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUsers, useToggleUserStatus } from '@/lib/hooks/useUsers';
-import { Search, MoreVertical, User, Eye, Users, UserPlus } from 'lucide-react';
+import { MoreVertical, User, Eye, Users, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { AddUserModal } from '@/components/users/AddUserModal';
 import { useRouter } from 'next/navigation';
@@ -34,7 +33,6 @@ export function UsersPage() {
   const { data: session } = useSession();
   const canManageUserStatus = session?.user.role === 'SUPER_ADMIN';
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -51,12 +49,6 @@ export function UsersPage() {
   const users = data?.items || [];
   const meta = data?.meta;
   const totalPages = meta?.pages ?? 1;
-
-
-
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery]);
 
   const handleToggleStatus = (userId: string) => {
     setSelectedUserId(userId);
@@ -222,7 +214,7 @@ export function UsersPage() {
                 <EmptyState
                   icon={Users}
                   title="No users found"
-                  description={searchQuery ? "Try adjusting your search" : "Start by adding your first user"}
+                  description="Start by adding your first user"
                   action={{
                     label: "Add User",
                     onClick: () => setAddUserModal(true),

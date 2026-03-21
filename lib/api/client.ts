@@ -6,7 +6,7 @@ const SESSION_CACHE_TTL_MS = 5000;
 
 let cachedAccessToken: string | null = null;
 let cachedAt = 0;
-let sessionRequest: Promise<ReturnType<typeof getSession>> | null = null;
+let sessionRequest: ReturnType<typeof getSession> | null = null;
 let isSigningOut = false;
 
 const getAccessToken = async () => {

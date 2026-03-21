@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { CustomBtn } from '@/components/shared/CustomBtn';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -64,10 +63,6 @@ export default function PaymentsPage() {
 
   const payments = data?.items || [];
   const totalPages = data?.meta.pages ?? 1;
-
-  useEffect(() => {
-    setPage(1);
-  }, [statusFilter, searchQuery]);
 
   const handleRefundClick = (paymentId: string) => {
     setSelectedPayment(paymentId);
@@ -198,7 +193,10 @@ export default function PaymentsPage() {
                     id="payment-search"
                     placeholder="Search by transaction, order, or reference"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setPage(1);
+                    }}
                     className="h-11 rounded-lg border-slate-200 bg-white pl-9 shadow-none focus-visible:ring-2 focus-visible:ring-emerald-500/20"
                   />
                 </div>
@@ -208,7 +206,13 @@ export default function PaymentsPage() {
                 <label htmlFor="payment-status" className="text-sm font-medium text-slate-700">
                   Status
                 </label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value);
+                  setPage(1);
+                }}
+              >
                   <SelectTrigger
                     id="payment-status"
                     className="h-11 w-full rounded-lg border-slate-200 bg-white shadow-none focus-visible:ring-2 focus-visible:ring-emerald-500/20"

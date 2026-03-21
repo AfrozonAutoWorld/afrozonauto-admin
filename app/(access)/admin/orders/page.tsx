@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -93,10 +93,6 @@ export default function AllOrdersPage() {
   const orders = data?.items || [];
   const totalPages = data?.meta.pages ?? 1;
 
-  useEffect(() => {
-    setPage(1);
-  }, [search, statusFilter, userId, priority, shippingMethod, destinationCountry, startDate, endDate]);
-
   const clearFilters = () => {
     setSearch('');
     setStatusFilter('');
@@ -140,7 +136,10 @@ export default function AllOrdersPage() {
                     id="order-search"
                     placeholder="Request number, customer name, or email"
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setPage(1);
+                    }}
                     className={`${filterFieldClassName} pl-9`}
                   />
                 </div>
@@ -154,7 +153,10 @@ export default function AllOrdersPage() {
                   id="order-status"
                   placeholder="PENDING,CONFIRMED"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setPage(1);
+                  }}
                   list="order-status-options"
                   className={filterFieldClassName}
                 />
@@ -168,7 +170,10 @@ export default function AllOrdersPage() {
                   id="order-user-id"
                   placeholder="Filter by user ID"
                   value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
+                  onChange={(e) => {
+                    setUserId(e.target.value);
+                    setPage(1);
+                  }}
                   className={filterFieldClassName}
                 />
               </div>
@@ -177,7 +182,13 @@ export default function AllOrdersPage() {
                 <label className={filterLabelClassName} htmlFor="order-priority">
                   Priority
                 </label>
-                <Select value={priority} onValueChange={setPriority}>
+                <Select
+                  value={priority}
+                  onValueChange={(value) => {
+                    setPriority(value);
+                    setPage(1);
+                  }}
+                >
                   <SelectTrigger
                     id="order-priority"
                     className={`w-full ${filterFieldClassName}`}
@@ -203,7 +214,10 @@ export default function AllOrdersPage() {
                   id="order-shipping-method"
                   placeholder="RORO, AIR_FREIGHT, etc."
                   value={shippingMethod}
-                  onChange={(e) => setShippingMethod(e.target.value)}
+                  onChange={(e) => {
+                    setShippingMethod(e.target.value);
+                    setPage(1);
+                  }}
                   className={filterFieldClassName}
                 />
               </div>
@@ -216,7 +230,10 @@ export default function AllOrdersPage() {
                   id="order-destination-country"
                   placeholder="Nigeria"
                   value={destinationCountry}
-                  onChange={(e) => setDestinationCountry(e.target.value)}
+                  onChange={(e) => {
+                    setDestinationCountry(e.target.value);
+                    setPage(1);
+                  }}
                   className={filterFieldClassName}
                 />
               </div>
@@ -229,7 +246,10 @@ export default function AllOrdersPage() {
                   id="order-start-date"
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setPage(1);
+                  }}
                   className={filterFieldClassName}
                 />
               </div>
@@ -242,7 +262,10 @@ export default function AllOrdersPage() {
                   id="order-end-date"
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setPage(1);
+                  }}
                   className={filterFieldClassName}
                 />
               </div>

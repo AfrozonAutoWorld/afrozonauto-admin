@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -15,11 +15,7 @@ export default function ForgotPasswordPage() {
     useField('', EmailSchema);
   const forgotPassword = useForgotPassword();
   const [error, setError] = useState('');
-  const [isDisabled, setIsDisabled] = useState(true);
-
-  useEffect(() => {
-    setIsDisabled(!email || !!emailError);
-  }, [email, emailError]);
+  const isDisabled = !email || !!emailError;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

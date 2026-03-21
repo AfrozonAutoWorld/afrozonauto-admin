@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Header } from '@/components/layout/Header';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { CustomBtn } from '@/components/shared/CustomBtn';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Bell, Mail, ShoppingCart, DollarSign, CheckCircle, Clock, Check, CheckCheck } from 'lucide-react';
+import { Mail, ShoppingCart, CheckCircle, Clock, Check, CheckCheck, Bell } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   useMarkAllNotificationsAsRead,
@@ -52,23 +52,6 @@ export default function NotificationsPage() {
   const meta = data?.meta;
   const totalPages = meta?.pages ?? 1;
   const hasUnread = (stats?.pending ?? 0) > 0;
-
-
-
-  useEffect(() => {
-    setPage(1);
-  }, [typeFilter, statusFilter]);
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'order_created':
-        return <ShoppingCart className="h-4 w-4 text-purple-600" />;
-      case 'payment_confirmed':
-        return <DollarSign className="h-4 w-4 text-emerald-600" />;
-      default:
-        return <Bell className="h-4 w-4 text-blue-600" />;
-    }
-  };
 
   return (
     <div>
@@ -142,7 +125,13 @@ export default function NotificationsPage() {
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex flex-col sm:flex-row gap-4">
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <Select
+                  value={typeFilter}
+                  onValueChange={(value) => {
+                    setTypeFilter(value);
+                    setPage(1);
+                  }}
+                >
                   <SelectTrigger className="w-full sm:w-48">
                     <SelectValue />
                   </SelectTrigger>
@@ -164,7 +153,10 @@ export default function NotificationsPage() {
 
                 <Select
                   value={statusFilter}
-                  onValueChange={(value) => setStatusFilter(value as 'all' | 'pending' | 'completed')}
+                  onValueChange={(value) => {
+                    setStatusFilter(value as 'all' | 'pending' | 'completed');
+                    setPage(1);
+                  }}
                 >
                   <SelectTrigger className="w-full sm:w-48">
                     <SelectValue />

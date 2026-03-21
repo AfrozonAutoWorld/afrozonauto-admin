@@ -56,7 +56,10 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
       .replace(/\b\w/g, (char) => char.toUpperCase());
 
   const confirmToggleStatus = () => {
-    toggleStatus.mutate(user.id, {
+    const userId = user?.id;
+    if (!userId) return;
+
+    toggleStatus.mutate(userId, {
       onSuccess: () => setConfirmOpen(false),
     });
   };

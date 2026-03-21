@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useCreateVehicle } from '@/lib/hooks/useVehicles';
 import { Modal } from '../shared';
 import { CountrySelect, FormField, SelectField, TextAreaField } from '@/components/Form';
-import { FileText, ListChecks } from 'lucide-react';
 import {
   MakeSchema,
   ModelSchema,
@@ -106,11 +105,6 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   const [bodyType, setBodyType] = useState('');
   const [features, setFeatures] = useState('');
   const [files, setFiles] = useState<File[]>([]);
-  const parsedFeatures = features
-    .split('\n')
-    .map((feature) => feature.trim())
-    .filter(Boolean);
-  const descriptionLength = description.trim().length;
 
   const resetForm = () => {
     handleVinChange(makeEvent(''));

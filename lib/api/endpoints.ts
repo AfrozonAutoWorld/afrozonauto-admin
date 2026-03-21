@@ -55,10 +55,12 @@ export const API_ROUTES = {
     getAllOrders: "/orders/admin/all",
     getOrderById: (id: string) => `/orders/${id}`,
     updateOrderStatus: (id: string) => `/orders/${id}/status`,
+    cancelOrder: (id: string) => `/orders/${id}/cancel`,
     deleteOrder: (id: string) => `/orders/${id}`, // super-admin
     updateOrderPriority: (id: string) => `/orders/${id}/priority`,
     updateBulkOrderStatus: "/orders/bulk/status",
     updateOrderTag: (id: string) => `/orders/${id}/tags`,
+    addOrderNote: (id: string) => `/orders/${id}/notes`,
     addNote: (id: string) => `/orders/${id}/notes`, // content: string, isInternal: boolean
     getAdminNoteForOrder: (id: string) => `/orders/${id}/notes`,
     softDeleteOrder: (id: string) => `/orders/${id}/soft`,
