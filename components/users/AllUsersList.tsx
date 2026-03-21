@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Header } from '@/components/layout/Header';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { CustomBtn, StatusBadge, LoadingSpinner, EmptyState, ConfirmModal } from '@/components/shared'
 import {
   Table,
@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUsers, useToggleUserStatus } from '@/lib/hooks/useUsers';
-import { Search, MoreVertical, User, Eye, Users, UserPlus } from 'lucide-react';
+import { MoreVertical, User, Eye, Users, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { AddUserModal } from '@/components/users/AddUserModal';
 import { useRouter } from 'next/navigation';
@@ -30,20 +30,25 @@ import { useRouter } from 'next/navigation';
 
 export function UsersPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const canManageUserStatus = session?.user.role === 'SUPER_ADMIN';
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const { data: users, isLoading } = useUsers();
+  const [page, setPage] = useState(1);
+  const limit = 10;
+  const { data, isLoading } = useUsers({
+    page,
+    limit,
+    //search: searchQuery.trim() || undefined,
+  });
   const [addUserModal, setAddUserModal] = useState(false);
 
   const toggleStatus = useToggleUserStatus();
 
-  const filteredUsers = users?.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.country.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const users = data?.items || [];
+  const meta = data?.meta;
+  const totalPages = meta?.pages ?? 1;
 
   const handleToggleStatus = (userId: string) => {
     setSelectedUserId(userId);
@@ -71,11 +76,11 @@ export function UsersPage() {
         <div className="p-6 space-y-6">
 
           {/* Summary Stats */}
-          {users && (
+          {users.length > 0 && (
             <div className="grid gap-4 md:grid-cols-3">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-2xl font-bold">{users.length}</div>
+                  <div className="text-2xl font-bold">{meta?.total ?? users.length}</div>
                   <p className="text-sm text-muted-foreground">Total Users</p>
                 </CardContent>
               </Card>
@@ -90,7 +95,7 @@ export function UsersPage() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold">
-                    {users.filter(u => u.role === 'super_admin').length}
+                    {users.filter(u => u.role === 'SUPER_ADMIN').length}
                   </div>
                   <p className="text-sm text-muted-foreground">Super Admins</p>
                 </CardContent>
@@ -99,37 +104,24 @@ export function UsersPage() {
           )}
 
           {/* Search Bar */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search users by name, email, or country..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                <CustomBtn
-                  icon={UserPlus}
-                  onPress={() => setAddUserModal(true)}
-                  type="submit"
-                  isLoading={isLoading}
-                  className="bg-emerald-600 text-white rounded-lg cursor-pointer px-4 font-semibold text-lg"
-                >
-                  Add User
-                </CustomBtn>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-end gap-4 pt-6">
+            <CustomBtn
+              icon={UserPlus}
+              onPress={() => setAddUserModal(true)}
+              type="submit"
+              isLoading={isLoading}
+              className="bg-emerald-600 text-white rounded-lg cursor-pointer px-4 font-semibold text-lg"
+            >
+              Add User
+            </CustomBtn>
+          </div>
 
           {/* Users Table */}
           <Card>
             <CardContent className="p-0">
               {isLoading ? (
                 <LoadingSpinner text="Loading users..." />
-              ) : filteredUsers && filteredUsers.length > 0 ? (
+              ) : users.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -144,7 +136,7 @@ export function UsersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => (
+                    {users.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -169,7 +161,7 @@ export function UsersPage() {
                         </TableCell>
                         <TableCell>{user.country}</TableCell>
                         <TableCell>
-                          <StatusBadge status={user.status} />
+                          <StatusBadge status={user.role} />
                         </TableCell>
                         <TableCell>
                           <span className="font-medium">{user.totalOrders}</span>
@@ -201,12 +193,16 @@ export function UsersPage() {
                                 <User className="mr-2 h-4 w-4" />
                                 View Orders
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleToggleStatus(user.id)}
-                              >
-                                {user.status === 'active' ? 'Deactivate' : 'Activate'} User
-                              </DropdownMenuItem>
+                              {canManageUserStatus && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleToggleStatus(user.id)}
+                                  >
+                                    {user.status === 'active' ? 'Deactivate' : 'Activate'} User
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -218,16 +214,44 @@ export function UsersPage() {
                 <EmptyState
                   icon={Users}
                   title="No users found"
-                  description={searchQuery ? "Try adjusting your search" : "Start by adding your first user"}
+                  description="Start by adding your first user"
                   action={{
                     label: "Add User",
-                    onClick: () => console.log('Add user'),
+                    onClick: () => setAddUserModal(true),
                     icon: UserPlus,
                   }}
                 />
               )}
             </CardContent>
+
+            {totalPages > 1 && (
+              <CardFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-2">
+                <div className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages} • Total {meta?.total ?? users.length}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    disabled={page <= 1}
+                    className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 cursor-pointer hover:bg-gray-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={page >= totalPages}
+                    className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 cursor-pointer hover:bg-gray-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </CardFooter>
+            )}
+
           </Card>
+
 
 
         </div>
@@ -243,17 +267,19 @@ export function UsersPage() {
 
 
       {/* Confirm Modal */}
-      <ConfirmModal
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title={`${selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'} User`}
-        description="This will change the user's access to the platform"
-        message={`Are you sure you want to ${selectedUser?.status === 'active' ? 'deactivate' : 'activate'} ${selectedUser?.name}?`}
-        onConfirm={confirmToggleStatus}
-        isLoading={toggleStatus.isPending}
-        variant={selectedUser?.status === 'active' ? 'warning' : 'default'}
-        confirmText={selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'}
-      />
+      {canManageUserStatus && (
+        <ConfirmModal
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={`${selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'} User`}
+          description="This will change the user's access to the platform"
+          message={`Are you sure you want to ${selectedUser?.status === 'active' ? 'deactivate' : 'activate'} ${selectedUser?.name}?`}
+          onConfirm={confirmToggleStatus}
+          isLoading={toggleStatus.isPending}
+          variant={selectedUser?.status === 'active' ? 'warning' : 'default'}
+          confirmText={selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'}
+        />
+      )}
 
     </>
   );

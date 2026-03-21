@@ -3,13 +3,15 @@
 import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
 import { toast } from 'sonner';
-import { UserRole } from '@/types';
 import { EmailSchema, FullNameSchema, PhoneSchema, useField } from '@/lib';
-import { CountrySelect, FormField, SelectField } from '../Form';
+import { FormField, SelectField } from '../Form';
+import { useCreateUser } from '@/lib/hooks/useUsers';
 
 const roleOptions = [
-  { value: "ADMIN", label: "Admin" },
-  { value: "OPERATION", label: "operation" },
+  { value: "SUPER_ADMIN", label: "Super Admin" },
+  { value: "OPERATIONS_ADMIN", label: "Operations Admin" },
+  { value: "BUYER", label: "Buyer" },
+  { value: "SELLER", label: "Seller" },
 ]
 
 interface AddUserModalProps {
@@ -18,32 +20,88 @@ interface AddUserModalProps {
 }
 
 export function AddUserModal({ open, onOpenChange }: AddUserModalProps) {
-  const { value: fullName, error: fullNameError, handleChange: handleFullNameChange } = useField("", FullNameSchema);
-  const { value: phone, error: phoneError, handleChange: handleTelePhoneChange } = useField("", PhoneSchema);
-  const { value: email, error: emailError, handleChange: handleEmailChange } = useField("", EmailSchema);
+  const {
+    value: firstName,
+    error: firstNameError,
+    handleChange: handleFirstNameChange,
+    validate: validateFirstName,
+    reset: resetFirstName,
+  } = useField("", FullNameSchema);
+  const {
+    value: lastName,
+    error: lastNameError,
+    handleChange: handleLastNameChange,
+    validate: validateLastName,
+    reset: resetLastName,
+  } = useField("", FullNameSchema);
+  const {
+    value: phone,
+    error: phoneError,
+    handleChange: handleTelePhoneChange,
+    validate: validatePhone,
+    reset: resetPhone,
+  } = useField("", PhoneSchema);
+  const {
+    value: email,
+    error: emailError,
+    handleChange: handleEmailChange,
+    validate: validateEmail,
+    reset: resetEmail,
+  } = useField("", EmailSchema);
 
-  const [selectedRole, setSelectedRole] = useState<UserRole | "">("");
-  const [country, setCountry] = useState<string>("");
+  const [selectedRole, setSelectedRole] = useState<string>("");
   const [roleError, setRoleError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const createUser = useCreateUser();
+
+  const resetForm = () => {
+    resetFirstName();
+    resetLastName();
+    resetPhone();
+    resetEmail();
+    setSelectedRole("");
+    setRoleError("");
+  };
 
   const handleSubmit = async () => {
-    if (!fullName || !email || !phone || !selectedRole) {
+    const isFirstNameValid = validateFirstName();
+    const isLastNameValid = validateLastName();
+    const isEmailValid = validateEmail();
+    const isPhoneValid = validatePhone();
+
+    if (!selectedRole) {
+      setRoleError("Role is required");
+    }
+
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !phone ||
+      !selectedRole ||
+      !isFirstNameValid ||
+      !isLastNameValid ||
+      !isEmailValid ||
+      !isPhoneValid
+    ) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    setIsLoading(true);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success('User added successfully');
-      onOpenChange(false);
-    } catch {
-      toast.error('Failed to add user');
-    } finally {
-      setIsLoading(false);
-    }
+    createUser.mutate(
+      {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        role: selectedRole,
+      },
+      {
+        onSuccess: () => {
+          resetForm();
+          onOpenChange(false);
+        },
+      },
+    );
   };
 
 
@@ -57,23 +115,40 @@ export function AddUserModal({ open, onOpenChange }: AddUserModalProps) {
       showFooter
       onConfirm={handleSubmit}
       confirmText="Add User"
-      isLoading={isLoading}
+      isLoading={createUser.isPending}
     >
       <div className="space-y-4">
-        <FormField
-          label="Full Name"
-          id="fullName"
-          type="text"
-          htmlFor="fullName"
-          placeholder="Firstname"
-          value={fullName}
-          onChange={handleFullNameChange}
-          isInvalid={!!fullNameError}
-          errorMessage={fullNameError}
-          disabled={isLoading}
-          reqValue="*"
-          required
-        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            label="First Name"
+            id="firstName"
+            type="text"
+            htmlFor="firstName"
+            placeholder="John"
+            value={firstName}
+            onChange={handleFirstNameChange}
+            isInvalid={!!firstNameError}
+            errorMessage={firstNameError}
+            disabled={createUser.isPending}
+            reqValue="*"
+            required
+          />
+
+          <FormField
+            label="Last Name"
+            id="lastName"
+            type="text"
+            htmlFor="lastName"
+            placeholder="Doe"
+            value={lastName}
+            onChange={handleLastNameChange}
+            isInvalid={!!lastNameError}
+            errorMessage={lastNameError}
+            disabled={createUser.isPending}
+            reqValue="*"
+            required
+          />
+        </div>
 
         <FormField
           label="Email address"
@@ -87,9 +162,9 @@ export function AddUserModal({ open, onOpenChange }: AddUserModalProps) {
           errorMessage={emailError}
           reqValue="*"
           className="text-sm"
+          disabled={createUser.isPending}
           required
         />
-
 
         <FormField
           label="Phone Number"
@@ -101,19 +176,9 @@ export function AddUserModal({ open, onOpenChange }: AddUserModalProps) {
           onChange={handleTelePhoneChange}
           isInvalid={!!phoneError}
           errorMessage={phoneError}
-          disabled={isLoading}
+          disabled={createUser.isPending}
           reqValue="*"
           required
-        />
-
-        <CountrySelect
-          label="Country"
-          value={country}
-          onChange={(c) => setCountry(c)}
-          placeholder="Select a country"
-          required
-          isInvalid={!country && isLoading === false}
-          errorMessage={!country ? "Country is required" : undefined}
         />
 
         <div className='w-full'>
@@ -126,7 +191,7 @@ export function AddUserModal({ open, onOpenChange }: AddUserModalProps) {
             errorMessage={roleError}
             value={selectedRole}
             onChange={(value: string) => {
-              setSelectedRole(value as UserRole);
+              setSelectedRole(value);
               setRoleError("");
             }}
             options={roleOptions}

@@ -1,5 +1,6 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import type { UserRole } from "@/types";
 
 export default withAuth(
   function middleware(req) {
@@ -17,28 +18,21 @@ export default withAuth(
       return response;
     }
 
-    const role = token.role;
+    const role = token.role as UserRole | undefined;
 
-    // Admin routes — accessible by SUPER_ADMIN, ADMIN, BUYER
+    // Admin routes — accessible only by SUPER_ADMIN and OPERATIONS_ADMIN
     if (path.startsWith("/admin")) {
-      if (role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "BUYER") {
-        if (role === "OPERATION") {
-          return NextResponse.redirect(
-            new URL("/operations/dashboard", req.url),
-          );
-        }
+      if (role !== "SUPER_ADMIN" && role !== "OPERATIONS_ADMIN") {
         return NextResponse.redirect(new URL("/unauthorized", req.url));
       }
     }
 
-    // Operations routes — accessible only by OPERATION
+    // Operations routes are legacy; keep them mapped to the admin dashboard
     if (path.startsWith("/operations")) {
-      if (role !== "OPERATION") {
-        if (role === "SUPER_ADMIN" || role === "ADMIN" || role === "BUYER") {
-          return NextResponse.redirect(new URL("/admin/dashboard", req.url));
-        }
-        return NextResponse.redirect(new URL("/unauthorized", req.url));
+      if (role === "SUPER_ADMIN" || role === "OPERATIONS_ADMIN") {
+        return NextResponse.redirect(new URL("/admin/dashboard", req.url));
       }
+      return NextResponse.redirect(new URL("/unauthorized", req.url));
     }
 
     return NextResponse.next();

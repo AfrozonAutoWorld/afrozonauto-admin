@@ -3,6 +3,7 @@ import {
   vehicleQueries,
   type CreateVehiclePayload,
   type UpdateVehiclePayload,
+  type Vehicle,
   type VehicleFilters,
 } from "@/lib/api/queries";
 import { toast } from "sonner";
@@ -31,7 +32,6 @@ export const useVehicles = (filters?: VehicleFilters) => {
   return useQuery({
     queryKey: vehicleKeys.list(filtersWithPagination),
     queryFn: () => vehicleQueries.getVehicles(filtersWithPagination),
-    select: (data) => data.data, // Return the data object with vehicles and meta
   });
 };
 
@@ -124,6 +124,49 @@ export const useDeleteVehicle = () => {
     },
     onError: (error) => {
       toast.error(error?.response?.data?.message || "Failed to delete vehicle");
+    },
+  });
+};
+
+// Toggle featured status
+export const useToggleFeatured = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Vehicle,
+    AxiosError<{ message?: string }>,
+    { id: string; featured: boolean }
+  >({
+    mutationFn: ({ id, featured }) =>
+      vehicleQueries.updateVehicle(id, { featured }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(variables.id) });
+      toast.success("Vehicle featured status updated!");
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to update featured");
+    },
+  });
+};
+
+// Toggle availability status
+export const useToggleAvailability = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Vehicle,
+    AxiosError<{ message?: string }>,
+    { id: string; status: string }
+  >({
+    mutationFn: ({ id, status }) => vehicleQueries.updateVehicle(id, { status }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(variables.id) });
+      toast.success("Vehicle availability updated!");
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to update availability");
     },
   });
 };

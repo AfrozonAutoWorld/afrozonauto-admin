@@ -20,10 +20,28 @@ interface TextFieldProps {
   minLen?: number;
   maxLen?: number;
   rows?: number;
-  textColor?: string
+  textColor?: string;
+  fixedHeightClassName?: string;
+  disableAutosize?: boolean;
 }
 
-const TextAreaField: React.FC<TextFieldProps> = ({ textColor, label, htmlFor, id, isInvalid, errorMessage, placeholder, value, onChange, required, minLen, maxLen, rows = 4 }) => {
+const TextAreaField: React.FC<TextFieldProps> = ({
+  textColor,
+  label,
+  htmlFor,
+  id,
+  isInvalid,
+  errorMessage,
+  placeholder,
+  value,
+  onChange,
+  required,
+  minLen,
+  maxLen,
+  rows = 4,
+  fixedHeightClassName,
+  disableAutosize = false,
+}) => {
   const handleChange = (value: string) => {
     onChange(value);
   };
@@ -45,14 +63,20 @@ const TextAreaField: React.FC<TextFieldProps> = ({ textColor, label, htmlFor, id
         minLength={minLen}
         maxLength={maxLen}
         rows={rows}
+        disableAutosize={disableAutosize}
         radius="md"
-        variant="bordered"
+        //variant="bordered"
         classNames={{
           inputWrapper: [
             "data-[hover=true]:border-white",
-            "group-data-[focus=true]:border-svnlGray/10",
+            "group-data-[focus=true]:border-transparent",
+            "group-data-[focus=true]:shadow-none",
             "bg-white rounded-[5px] py-2 lg:py-4",
-            "text-xs lg:text-base font-normal text-svnlGray",
+            "text-xs lg:text-base font-normal text-svnlGray border border-gray-400",
+            fixedHeightClassName,
+          ],
+          input: [
+            fixedHeightClassName ? "overflow-y-auto" : "",
           ],
         }}
       />

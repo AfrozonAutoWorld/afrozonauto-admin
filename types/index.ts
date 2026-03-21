@@ -1,4 +1,8 @@
-export type UserRole = "super_admin" | "operations_admin";
+export type UserRole =
+  | "SUPER_ADMIN"
+  | "OPERATIONS_ADMIN"
+  | "SELLER"
+  | "BUYER";
 
 export type OrderStatus = "pending" | "paid" | "cancelled";
 
@@ -10,9 +14,21 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  emailVerified?: boolean;
   phone: string;
   role: UserRole;
   status: "active" | "inactive";
+  isSuspended?: boolean;
+  walletBalance?: number;
+  currency?: string;
+  language?: string;
+  timezone?: string;
+  lastLoginAt?: string | null;
+  notificationPreferences?: string | null;
+  sellerStatus?: string | null;
+  isVerified?: boolean;
+  firstName?: string | null;
+  lastName?: string | null;
   createdAt: string;
   country: string;
   totalOrders: number;
@@ -62,7 +78,7 @@ export interface Payment {
   orderId: string;
   amount: number;
   status: "pending" | "completed" | "failed" | "refunded";
-  method: "card" | "bank_transfer" | "paypal";
+  method: string;
   transactionId: string;
   createdAt: string;
   refundAmount?: number;
@@ -74,18 +90,44 @@ export interface DashboardStats {
   totalCars: number;
   totalOrders: number;
   totalRevenue: number;
-  pendingOrders: number;
-  apiCars: number;
-  manualCars: number;
+  pendingOrdersCount: number;
+  carBreakdown: {
+    api: number;
+    manual: number;
+  };
+  revenueThisMonth: number;
+  revenueLastMonth: number;
+  revenueChangePercent: number;
 }
 
 export interface Activity {
   id: string;
-  type: "order" | "payment" | "user" | "car";
+  type: "order" | "payment" | "user" | "car" | "shipment";
   description: string;
   timestamp: string;
   userId?: string;
   userName?: string;
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  status: string;
+  title: string;
+  message: string;
+  recipient: string;
+  createdAt: string;
+  isRead?: boolean;
+  readAt?: string | null;
+  actionUrl?: string;
+  actionLabel?: string;
+}
+
+export interface NotificationStats {
+  totalSent: number;
+  delivered: number;
+  pending: number;
+  orderAlerts: number;
 }
 
 export interface AddCarForm {

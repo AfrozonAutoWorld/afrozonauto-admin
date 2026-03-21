@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronUp,
   ChevronDown,
+  UserCircle2,
 } from 'lucide-react';
 import { useUIStore } from '@/lib/store/useUIStore';
 import { Button } from '@/components/ui/button';
@@ -21,48 +22,90 @@ import { Logo } from '../shared';
 import { useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 
-const menuItems = [
-  {
-    title: 'Dashboard',
-    href: '/admin/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Users',
-    href: '/admin/users',
-    icon: Users,
-  },
-  {
-    title: 'Cars',
-    href: '/admin/cars',
-    icon: Car,
-  },
-  {
-    title: 'Orders',
-    href: '/admin/orders',
-    icon: ShoppingCart,
-    children: [
-      {
-        title: 'Pending Orders',
-        href: '/admin/orders/pending',
-      },
-      {
-        title: 'Completed Orders',
-        href: '/admin/orders/completed',
-      },
-    ],
-  },
-  {
-    title: 'Payments',
-    href: '/admin/payments',
-    icon: CreditCard,
-  },
-];
+type AppRole = 'SUPER_ADMIN' | 'OPERATIONS_ADMIN' | 'SELLER' | 'BUYER';
 
-function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
-  const { data: session } = useSession();
+type MenuItem = {
+  title: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  roles: AppRole[];
+  children?: Array<{
+    title: string;
+    href: string;
+  }>;
+};
+
+const getRoleBasePath = (role?: string) => {
+  if (role === 'SUPER_ADMIN' || role === 'OPERATIONS_ADMIN') {
+    return '/admin';
+  }
+  return '/unauthorized';
+};
+
+const buildMenuItems = (role?: string): MenuItem[] => {
+  const basePath = getRoleBasePath(role);
+  const adminRoles: AppRole[] = ['SUPER_ADMIN', 'OPERATIONS_ADMIN'];
+
+  return [
+    {
+      title: 'Dashboard',
+      href: `${basePath}/dashboard`,
+      icon: LayoutDashboard,
+      roles: adminRoles,
+    },
+    {
+      title: 'Users',
+      href: `${basePath}/users`,
+      icon: Users,
+      roles: adminRoles,
+    },
+    {
+      title: 'Seller Vehicles',
+      href: `${basePath}/seller-vehicles`,
+      icon: Car,
+      roles: adminRoles,
+    },
+    {
+      title: 'Orders',
+      href: `${basePath}/orders`,
+      icon: ShoppingCart,
+      roles: adminRoles,
+      children: [
+        {
+          title: 'All Orders',
+          href: `${basePath}/orders`,
+        },
+        {
+          title: 'Pending Orders',
+          href: `${basePath}/orders/pending`,
+        },
+      ],
+    },
+    {
+      title: 'Payments',
+      href: `${basePath}/payments`,
+      icon: CreditCard,
+      roles: adminRoles,
+    },
+    {
+      title: 'Profile',
+      href: `${basePath}/profile`,
+      icon: UserCircle2,
+      roles: adminRoles,
+    },
+  ].filter((item) => role && item.roles.includes(role as AppRole));
+};
+
+function SidebarContent({
+  session,
+  onLinkClick,
+}: {
+  session?: ReturnType<typeof useSession>['data'];
+  onLinkClick?: () => void;
+}) {
   const pathname = usePathname();
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
+  const menuItems = buildMenuItems(session?.user.role);
 
   const toggleMenu = (href: string) => {
     setExpandedMenus(prev => ({ ...prev, [href]: !prev[href] }));
@@ -187,15 +230,22 @@ function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const { isMobileSidebarOpen, closeMobileSidebar } = useUIStore();
 
   // Check if user is authenticated using NextAuth session
   const isAuthenticated = status === 'authenticated';
-  const isAuthRoute = pathname === '/login' || pathname === '/';
+  const isAuthRoute =
+    pathname === '/login' ||
+    pathname === '/forgot-password' ||
+    pathname === '/reset-password' ||
+    pathname === '/';
+  const canRenderSidebar =
+    session?.user.role === 'SUPER_ADMIN' ||
+    session?.user.role === 'OPERATIONS_ADMIN';
 
   // Don't show sidebar on auth routes or when not authenticated
-  if (!isAuthenticated || isAuthRoute) {
+  if (!isAuthenticated || isAuthRoute || !canRenderSidebar) {
     return null;
   }
 
@@ -203,13 +253,13 @@ export function Sidebar() {
     <>
       {/* Desktop Sidebar - Always visible on large screens */}
       <aside className="hidden lg:flex h-full w-64 flex-col border-r">
-        <SidebarContent />
+        <SidebarContent session={session} />
       </aside>
 
       {/* Mobile Sidebar - Slide-in sheet on small screens */}
       <Sheet open={isMobileSidebarOpen} onOpenChange={closeMobileSidebar}>
         <SheetContent side="left" className="p-0 w-64">
-          <SidebarContent onLinkClick={closeMobileSidebar} />
+          <SidebarContent session={session} onLinkClick={closeMobileSidebar} />
         </SheetContent>
       </Sheet>
     </>
