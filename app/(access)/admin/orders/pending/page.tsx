@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { usePendingOrders } from '@/lib/hooks/useOrders';
-import { ShoppingCart } from 'lucide-react';
+import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   Table,
@@ -19,12 +19,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@nextui-org/react';
+import { CustomBtn } from '@/components/shared';
 
 
 export default function PendingOrdersPage() {
   const router = useRouter();
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const limit = 5;
   const { data, isLoading } = usePendingOrders({ page, limit });
 
   const pendingOrders = data?.items || [];
@@ -38,12 +39,14 @@ export default function PendingOrdersPage() {
       />
 
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <Button
+        <CustomBtn
           variant="ghost"
-          onPress={() => router.back()}
+          icon={ArrowLeft}
+          onClick={() => router.back()}
+          className='cursor-pointer'
         >
           Back
-        </Button>
+        </CustomBtn>
 
         <Card>
           <CardContent className="p-0">

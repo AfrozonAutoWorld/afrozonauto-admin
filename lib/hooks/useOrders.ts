@@ -18,9 +18,14 @@ import type { ApiOrder } from "@/types/api";
 import { Order } from "@/types";
 
 type OrdersListParams = PaginationParams & {
-  status?: string;
+  status?: string[];
   userId?: string;
   search?: string;
+  priority?: string;
+  shippingMethod?: string;
+  destinationCountry?: string;
+  startDate?: string;
+  endDate?: string;
 };
 
 const getResponseMeta = (
@@ -43,10 +48,18 @@ const attachMetaIfArray = <T>(
 const fetchOrders = async (
   params?: OrdersListParams,
 ): Promise<PaginatedResult<Order>> => {
+  const requestParams = withPaginationDefaults({
+    ...params,
+    status:
+      params?.status && params.status.length > 0
+        ? params.status.join(",")
+        : undefined,
+  });
+
   const response = await apiClient.get<ApiResponse<Record<string, unknown>>>(
     API_ROUTES.orders.getAllOrders,
     {
-      params: withPaginationDefaults(params),
+      params: requestParams,
     },
   );
 
@@ -159,8 +172,10 @@ export function useCancelOrder() {
   return useMutation({
     mutationFn: (orderId: string) =>
       apiClient.post(API_ROUTES.orders.cancelOrder(orderId)),
-    onSuccess: () => {
+    onSuccess: (_, orderId) => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders", orderId] });
+      queryClient.invalidateQueries({ queryKey: ["orders", "pending"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Order cancelled successfully");
     },

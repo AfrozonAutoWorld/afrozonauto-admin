@@ -19,14 +19,14 @@ export const API_ROUTES = {
       `/admin/payments/order/${orderId}`,
     initiateRefund: (paymentId: string) =>
       `/admin/payments/${paymentId}/refund`,
+    confirmPayment: (id: string) => `/admin/payments/${id}/confirm`, // payload is note: string
+    rejectPayment: (id: string) => `/admin/payments/${id}/reject`, // payload is note: string
   },
   notification: {
     notificationStat: "/admin/notifications/stats",
-    getAllPayments: "/admin/notifications",
     getAllNotifications: "/admin/notifications",
-    getNotificationById: (id: string) => `/admin/notifications/${id}`,
     markAllNotAsRead: `/admin/notifications/mark-all-read`, //patch
-    markSingleNotAsRead: (id: string) => `/admin/notifications/${id}/read`, //patch
+    markSingleAsRead: (id: string) => `/admin/notifications/${id}/read`, //patch
   },
   sellers: {
     getASellerApplication: "/sellers/application",
@@ -47,12 +47,18 @@ export const API_ROUTES = {
     sourceReqById: (id: string) => `/sourcing-requests/${id}`,
   },
   orders: {
-    getAllOrders: "/admin/orders",
-    getOrderById: (id: string) => `/admin/orders/${id}`,
+    getAllOrders: "/orders/admin/all",
+    getOrderById: (id: string) => `/orders/${id}`,
     updateOrderStatus: (id: string) => `/orders/${id}/status`,
-    deleteOrder: (id: string) => `/orders/${id}`,
-    addOrderNote: (id: string) => `/admin/orders/${id}/notes`,
-    cancelOrder: (id: string) => `/admin/orders/${id}/cancel`,
+    deleteOrder: (id: string) => `/orders/${id}`, // super-admin
+    updateOrderPriority: (id: string) => `/orders/${id}/priority`,
+    updateBulkOrderStatus: "/orders/bulk/status",
+    updateOrderTag: (id: string) => `/orders/${id}/tags`,
+    addNote: (id: string) => `/orders/${id}/notes`, // content: string, isInternal: boolean
+    getAdminNoteForOrder: (id: string) => `/orders/${id}/notes`,
+    softDeleteOrder: (id: string) => `/orders/${id}/soft`,
+    getOrderCountGroupedByStatus: "/orders/stata/status-count",
+    getOrderStatReveue: "/orders/stats/revenue",
   },
   profile: {
     getAllProfiles: "/profile",

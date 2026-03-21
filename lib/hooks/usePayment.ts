@@ -128,3 +128,39 @@ export function useInitiateRefund() {
     },
   });
 }
+
+export function useConfirmPayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ paymentId, note }: { paymentId: string; note: string }) =>
+      apiClient.patch(API_ROUTES.payments.confirmPayment(paymentId), { note }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Payment confirmed successfully");
+    },
+    onError: () => {
+      toast.error("Failed to confirm payment");
+    },
+  });
+}
+
+export function useRejectPayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ paymentId, note }: { paymentId: string; note: string }) =>
+      apiClient.patch(API_ROUTES.payments.rejectPayment(paymentId), { note }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Payment rejected successfully");
+    },
+    onError: () => {
+      toast.error("Failed to reject payment");
+    },
+  });
+}

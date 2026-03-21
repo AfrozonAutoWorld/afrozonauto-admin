@@ -28,6 +28,11 @@ import {
 } from '@/components/ui/table';
 import { useRouter } from 'next/navigation';
 
+const getValidDate = (value?: string) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -50,6 +55,8 @@ export default function DashboardPage() {
         return <Users className="h-4 w-4" />;
       case 'car':
         return <Car className="h-4 w-4" />;
+      case 'shipment':
+        return <Clock className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
     }
@@ -65,6 +72,8 @@ export default function DashboardPage() {
         return 'bg-blue-100 text-blue-600';
       case 'car':
         return 'bg-green-100 text-green-600';
+      case 'shipment':
+        return 'bg-orange-100 text-orange-600';
       default:
         return 'bg-gray-100 text-gray-600';
     }
@@ -294,9 +303,12 @@ export default function DashboardPage() {
                             </>
                           )}
                           <span>
-                            {formatDistanceToNow(new Date(activity.timestamp), {
-                              addSuffix: true
-                            })}
+                            {(() => {
+                              const activityDate = getValidDate(activity.timestamp);
+                              return activityDate
+                                ? formatDistanceToNow(activityDate, { addSuffix: true })
+                                : 'Unknown time';
+                            })()}
                           </span>
                         </div>
                       </div>

@@ -12,11 +12,38 @@ import { pickEntity, unwrapApiData, type ApiResponse } from "@/lib/api/response"
 import { mapApiUserToUser } from "@/lib/api/mappers";
 import type { ApiUser } from "@/types/api";
 import type { User } from "@/types";
+import { AxiosError } from "axios";
 
 type UsersListParams = PaginationParams & {
   search?: string;
   status?: string;
   role?: string;
+};
+
+type CreateUserPayload = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: string;
+};
+
+const getResponseMeta = (
+  response: ApiResponse<Record<string, unknown>>,
+): Record<string, unknown> | undefined => {
+  return (response as unknown as { data?: { meta?: Record<string, unknown> } })
+    ?.data?.meta;
+};
+
+const attachMetaIfArray = <T>(
+  payload: Record<string, unknown> | T[],
+  meta?: Record<string, unknown>,
+) => {
+  if (Array.isArray(payload) && meta && typeof meta === "object") {
+    return { data: payload, meta };
+  }
+
+  return payload;
 };
 
 const fetchUsers = async (
@@ -29,8 +56,14 @@ const fetchUsers = async (
     },
   );
 
-  const payload = unwrapApiData(response.data) as Record<string, unknown>;
-  const normalized = normalizePaginatedPayload<ApiUser>(payload, "users");
+  const payload = unwrapApiData(response.data) as
+    | Record<string, unknown>
+    | ApiUser[];
+  const meta = getResponseMeta(response.data);
+  const normalized = normalizePaginatedPayload<ApiUser>(
+    attachMetaIfArray(payload, meta),
+    "users",
+  );
 
   return {
     ...normalized,
@@ -81,6 +114,45 @@ export function useToggleUserStatus() {
     },
     onError: () => {
       toast.error("Failed to update user status");
+    },
+  });
+}
+
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation<User, AxiosError<{ message?: string }>, CreateUserPayload>({
+    mutationFn: async (payload) => {
+      try {
+        const response = await apiClient.post<ApiResponse<unknown>>(
+          API_ROUTES.users.createAUser,
+          payload,
+        );
+        const data = unwrapApiData(response.data);
+        const apiUser = pickEntity<ApiUser>(data, "user");
+        return mapApiUserToUser(apiUser);
+      } catch (error) {
+        const status = (error as AxiosError)?.response?.status;
+
+        if (status !== 404 && status !== 405) {
+          throw error as AxiosError<{ message?: string }>;
+        }
+
+        const fallbackResponse = await apiClient.post<ApiResponse<unknown>>(
+          API_ROUTES.users.createUserLegacy,
+          payload,
+        );
+        const fallbackData = unwrapApiData(fallbackResponse.data);
+        const apiUser = pickEntity<ApiUser>(fallbackData, "user");
+        return mapApiUserToUser(apiUser);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("User created successfully");
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || "Failed to create user");
     },
   });
 }

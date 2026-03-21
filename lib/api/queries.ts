@@ -1,9 +1,6 @@
 import { apiClient } from "./client";
 import { API_ROUTES } from "./endpoints";
-import {
-  normalizePaginatedPayload,
-  type PaginatedResult,
-} from "./pagination";
+import { normalizePaginatedPayload, type PaginatedResult } from "./pagination";
 import { unwrapApiData, type ApiResponse } from "./response";
 
 type TransmissionType = "Automatic" | "Manual";
@@ -144,10 +141,19 @@ export interface Vehicle {
   mileage?: number;
   horsepower?: number;
   torque?: number;
+  condition?: string;
+  description?: string;
+  country?: string;
+  city?: string;
+  bodyType?: string;
+  driveType?: string;
+  doors?: number;
+  seats?: number;
   createdAt: string;
   updatedAt: string;
 }
 
+type RawVehicle = Record<string, unknown>;
 
 const getResponseMeta = (
   response: ApiResponse<Record<string, unknown>>,
@@ -166,74 +172,346 @@ const attachMetaIfArray = <T>(
   return payload;
 };
 
+const asRecord = (value: unknown): RawVehicle | undefined =>
+  value && typeof value === "object" ? (value as RawVehicle) : undefined;
+
+const getString = (...values: unknown[]) => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+};
+
+const getNumber = (...values: unknown[]) => {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return 0;
+};
+
+const getBoolean = (value: unknown, fallback = false) =>
+  typeof value === "boolean" ? value : fallback;
+
+const normalizeVehicleType = (value: unknown): VehicleType => {
+  const normalized = getString(value).toUpperCase();
+  const allowed: VehicleType[] = [
+    "CAR",
+    "SUV",
+    "TRUCK",
+    "VAN",
+    "SEDAN",
+    "COUPE",
+    "HATCHBACK",
+    "WAGON",
+    "CONVERTIBLE",
+    "MOTORCYCLE",
+  ];
+
+  return (allowed.find((item) => item === normalized) ?? "CAR") as VehicleType;
+};
+
+const normalizeVehicleStatus = (value: unknown): VehicleStatus => {
+  const normalized = getString(value).toUpperCase();
+  if (
+    normalized === "SOLD" ||
+    normalized === "PENDING" ||
+    normalized === "RESERVED"
+  ) {
+    return normalized as VehicleStatus;
+  }
+  return "AVAILABLE";
+};
+
+const normalizeDriveType = (value: unknown): DrivetrainType => {
+  const normalized = getString(value).toUpperCase();
+  if (normalized === "RWD" || normalized === "AWD" || normalized === "4WD") {
+    return normalized as DrivetrainType;
+  }
+  return "FWD";
+};
+
+const normalizeFuelType = (value: unknown): FuelType => {
+  const raw = getString(value);
+  if (
+    raw === "Hybrid" ||
+    raw === "Diesel" ||
+    raw === "Electric" ||
+    raw === "Regular Unleaded"
+  ) {
+    return raw as FuelType;
+  }
+  return raw ? (raw as FuelType) : "Regular Unleaded";
+};
+
+const normalizeTransmission = (value: unknown): TransmissionType => {
+  const raw = getString(value);
+  return raw === "Manual" ? "Manual" : "Automatic";
+};
+
+const normalizeImages = (...values: unknown[]) => {
+  const images: string[] = [];
+
+  const pushImage = (entry: unknown) => {
+    if (typeof entry === "string" && entry.trim()) {
+      images.push(entry.trim());
+      return;
+    }
+
+    const record = asRecord(entry);
+    const url = getString(
+      record?.url,
+      record?.secure_url,
+      record?.location,
+      record?.path,
+      record?.imageUrl,
+    );
+    if (url) images.push(url);
+  };
+
+  for (const value of values) {
+    if (Array.isArray(value)) {
+      value.forEach(pushImage);
+      continue;
+    }
+    pushImage(value);
+  }
+
+  return images;
+};
+
+const normalizeFeatures = (value: unknown) => {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => getString(item)).filter(Boolean);
+};
+
+const normalizeVehicleEntity = (rawValue: unknown): Vehicle => {
+  const record = asRecord(rawValue) ?? {};
+  const nestedVehicle = asRecord(record.vehicle);
+  const apiListing = asRecord(record.apiData)?.listing as
+    | ApiListing
+    | undefined;
+  const apiVehicle = apiListing?.vehicle;
+  const retailListing = apiListing?.retailListing ?? null;
+
+  const id = getString(record.id, nestedVehicle?.id, record._id, record.vin);
+  const make = getString(
+    record.make,
+    nestedVehicle?.make,
+    apiVehicle?.make,
+    "Unknown",
+  );
+  const model = getString(
+    record.model,
+    record.modelName,
+    nestedVehicle?.model,
+    apiVehicle?.model,
+    "Unknown",
+  );
+  const year = getNumber(record.year, nestedVehicle?.year, apiVehicle?.year);
+  const priceUsd = getNumber(
+    record.priceUsd,
+    record.price,
+    retailListing?.price,
+    nestedVehicle?.priceUsd,
+  );
+  const vehicleType = normalizeVehicleType(
+    record.vehicleType ??
+      record.bodyType ??
+      nestedVehicle?.vehicleType ??
+      apiVehicle?.type,
+  );
+  const status = normalizeVehicleStatus(
+    record.status ?? nestedVehicle?.status ?? record.availabilityStatus,
+  );
+  const transmission = normalizeTransmission(
+    record.transmission ??
+      nestedVehicle?.transmission ??
+      apiVehicle?.transmission,
+  );
+  const fuelType = normalizeFuelType(
+    record.fuelType ?? nestedVehicle?.fuelType ?? apiVehicle?.fuel,
+  );
+  const drivetrain = normalizeDriveType(
+    record.drivetrain ??
+      record.driveType ??
+      nestedVehicle?.drivetrain ??
+      apiVehicle?.drivetrain,
+  );
+
+  return {
+    id,
+    vin: getString(record.vin, nestedVehicle?.vin, apiListing?.vin),
+    slug: getString(record.slug, nestedVehicle?.slug, id),
+    make,
+    model,
+    year,
+    priceUsd,
+    vehicleType,
+    exteriorColor:
+      getString(
+        record.exteriorColor,
+        record.color,
+        nestedVehicle?.exteriorColor,
+        apiVehicle?.exteriorColor,
+      ) || undefined,
+    interiorColor:
+      getString(record.interiorColor, nestedVehicle?.interiorColor) ||
+      undefined,
+    transmission,
+    fuelType,
+    engineSize: getString(
+      record.engineSize,
+      nestedVehicle?.engineSize,
+      apiVehicle?.engine,
+    ),
+    drivetrain,
+    dealerName: getString(
+      record.dealerName,
+      nestedVehicle?.dealerName,
+      retailListing?.dealer,
+      "Seller Listing",
+    ),
+    dealerState: getString(
+      record.dealerState,
+      record.state,
+      record.country,
+      nestedVehicle?.dealerState,
+      retailListing?.state,
+    ),
+    dealerCity: getString(
+      record.dealerCity,
+      record.city,
+      nestedVehicle?.dealerCity,
+      retailListing?.city,
+    ),
+    dealerZipCode: getString(
+      record.dealerZipCode,
+      record.zipCode,
+      nestedVehicle?.dealerZipCode,
+      retailListing?.zip,
+    ),
+    images: normalizeImages(
+      record.images,
+      record.photos,
+      record.files,
+      record.fileUrls,
+      nestedVehicle?.images,
+    ),
+    features: normalizeFeatures(record.features ?? nestedVehicle?.features),
+    source:
+      getString(record.source, nestedVehicle?.source).toUpperCase() === "API"
+        ? "API"
+        : "MANUAL",
+    apiProvider: getString(record.apiProvider, nestedVehicle?.apiProvider),
+    apiListingId: getString(
+      record.apiListingId,
+      nestedVehicle?.apiListingId,
+      apiListing?.vin,
+    ),
+    status,
+    featured: getBoolean(record.featured ?? nestedVehicle?.featured),
+    availability:
+      getString(record.availability, nestedVehicle?.availability) || undefined,
+    isActive: getBoolean(record.isActive ?? nestedVehicle?.isActive, true),
+    isHidden: getBoolean(record.isHidden ?? nestedVehicle?.isHidden, false),
+    apiData:
+      (asRecord(record.apiData) as ApiData | undefined) ??
+      ({
+        listing: apiListing,
+        raw: apiListing,
+        isTemporary: false,
+        cached: false,
+      } as ApiData),
+    apiSyncStatus: getString(
+      record.apiSyncStatus,
+      nestedVehicle?.apiSyncStatus,
+      "PENDING",
+    ) as ApiSyncStatus,
+    mileage:
+      getNumber(record.mileage, nestedVehicle?.mileage, retailListing?.miles) ||
+      undefined,
+    horsepower:
+      getNumber(record.horsepower, nestedVehicle?.horsepower) || undefined,
+    torque: getNumber(record.torque, nestedVehicle?.torque) || undefined,
+    condition: getString(record.condition) || undefined,
+    description: getString(record.description) || undefined,
+    country: getString(record.country) || undefined,
+    city: getString(record.city, record.dealerCity) || undefined,
+    bodyType: getString(record.bodyType) || undefined,
+    driveType: getString(record.driveType, record.drivetrain) || undefined,
+    doors: getNumber(record.doors) || undefined,
+    seats: getNumber(record.seats) || undefined,
+    createdAt: getString(
+      record.createdAt,
+      nestedVehicle?.createdAt,
+      new Date(0).toISOString(),
+    ),
+    updatedAt: getString(
+      record.updatedAt,
+      nestedVehicle?.updatedAt,
+      record.createdAt,
+      new Date(0).toISOString(),
+    ),
+  };
+};
+
 const pickVehicleEntity = (payload: unknown): Vehicle => {
   if (payload && typeof payload === "object") {
     const record = payload as Record<string, unknown>;
-    if ("vehicle" in record) return record.vehicle as Vehicle;
-    if ("sellerVehicle" in record) return record.sellerVehicle as Vehicle;
+    if ("vehicle" in record) return normalizeVehicleEntity(record.vehicle);
+    if ("sellerVehicle" in record)
+      return normalizeVehicleEntity(record.sellerVehicle);
   }
-  return payload as Vehicle;
+  return normalizeVehicleEntity(payload);
 };
 
 export interface CreateVehiclePayload {
-  vin: string;
-  slug: string;
   make: string;
-  model: string;
-  year: number;
-  vehicleType: string;
-  priceUsd: number;
-  originalPriceUsd?: number;
-  mileage?: number;
+  modelName: string;
+  year: number | string;
+  price: number | string;
+  mileage: number | string;
+  condition: string;
   transmission: string;
   fuelType: string;
-  images?: string[];
-  source: string;
-  status: string;
-  availability?: string;
-  featured?: boolean;
-  isActive?: boolean;
-  isHidden?: boolean;
+  color: string;
+  vin: string;
+  description: string;
+  country: string;
+  city: string;
+  engineSize?: string;
+  doors?: number | string;
+  seats?: number | string;
+  driveType?: string;
+  bodyType?: string;
+  features?: string[];
 }
 
-export type UpdateVehiclePayload = Partial<
-  Omit<CreateVehiclePayload, "vin" | "slug" | "source">
->;
+export type UpdateVehiclePayload = {
+  status?: string;
+  featured?: boolean;
+  isHidden?: boolean;
+};
 
 export interface VehicleFilters {
-  make?: string;
-  model?: string;
-  yearMin?: number;
-  yearMax?: number;
-  priceMin?: number;
-  priceMax?: number;
-  mileageMax?: number;
-  vehicleType?: string;
-  status?: string;
-  state?: string;
-  featured?: boolean;
-  search?: string;
   page?: number;
   limit?: number;
-  includeApi?: boolean;
-  source?: string;
 }
 
 export type VehiclesResponse = PaginatedResult<Vehicle>;
 
 // API Query Functions
 export const vehicleQueries = {
-  // Get all vehicles with comprehensive filters
+  // Get all seller vehicles with pagination only
   getVehicles: async (filters?: VehicleFilters): Promise<VehiclesResponse> => {
     const params = new URLSearchParams();
 
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== "") {
-          params.append(key, String(value));
-        }
-      });
-    }
+    if (filters?.page) params.append("page", String(filters.page));
+    if (filters?.limit) params.append("limit", String(filters.limit));
 
     const response = await apiClient.get<ApiResponse<Record<string, unknown>>>(
       `${API_ROUTES.sellerVehicles.getAllSellerVehicles}?${params.toString()}`,
@@ -246,7 +524,10 @@ export const vehicleQueries = {
       attachMetaIfArray(payload, meta),
       "sellerVehicles",
     );
-    return normalized;
+    return {
+      ...normalized,
+      items: normalized.items.map((item) => normalizeVehicleEntity(item)),
+    };
   },
 
   // Get single vehicle by ID
@@ -306,7 +587,9 @@ export const vehicleQueries = {
 
   // Delete vehicle
   deleteVehicle: async (id: string): Promise<void> => {
-    await apiClient.delete(API_ROUTES.sellerVehicles.deleteSellerVehicleById(id));
+    await apiClient.delete(
+      API_ROUTES.sellerVehicles.deleteSellerVehicleById(id),
+    );
   },
 
   // Toggle featured status

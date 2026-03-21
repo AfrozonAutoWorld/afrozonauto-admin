@@ -88,7 +88,7 @@ export function Modal({
                     onOpenChange(false);
                   }}
                   disabled={isLoading}
-                  className="flex-1 sm:flex-none"
+                  className="flex-1 sm:flex-none bg-white border rounded-lg"
                 >
                   {cancelText}
                 </CustomBtn>
@@ -96,7 +96,7 @@ export function Modal({
                   onClick={onConfirm}
                   isLoading={isLoading}
                   loadingText="Processing..."
-                  className="flex-1 sm:flex-none"
+                  className="flex-1 sm:flex-none   bg-emerald-600 text-white font-semibold rounded-lg px-4 py-2 shadow-sm hover:bg-emerald-700 disabled:bg-emerald-200 disabled:text-emerald-700"
                 >
                   {confirmText}
                 </CustomBtn>

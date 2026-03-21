@@ -9,9 +9,9 @@ const PUBLIC_ROUTES = ['/login', '/unauthorized'];
 
 const ROLE_HOME_MAP: Record<string, string> = {
   SUPER_ADMIN: '/admin/dashboard',
-  ADMIN: '/admin/dashboard',
-  BUYER: '/admin/dashboard',
-  OPERATION: '/operations/dashboard',
+  OPERATIONS_ADMIN: '/admin/dashboard',
+  BUYER: '/unauthorized',
+  SELLER: '/unauthorized',
 };
 
 const REDIRECT_KEY = 'redirectAfterLogin';

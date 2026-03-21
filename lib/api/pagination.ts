@@ -14,7 +14,7 @@ export type PaginatedResult<T> = {
 export type PaginationParams = {
   page?: number;
   limit?: number;
-} & Record<string, string | number | boolean | undefined>;
+} & Record<string, string | string[] | number | boolean | undefined>;
 
 const toNumber = (value: unknown, fallback: number) => {
   if (typeof value === "number" && Number.isFinite(value)) return value;

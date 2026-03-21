@@ -1,15 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CustomBtn } from '@/components/shared/CustomBtn';
+import { ConfirmModal } from '@/components/shared/ConfirmModal';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { useOrder } from '@/lib/hooks/useOrders';
-import { ArrowLeft, ShoppingCart } from 'lucide-react';
+import { useAddOrderNote, useCancelOrder, useOrder } from '@/lib/hooks/useOrders';
+import { ArrowLeft, Ban, FileText, ShoppingCart } from 'lucide-react';
 import { format } from 'date-fns';
 import { use } from 'react';
+import { TextAreaField } from '@/components/Form';
 
 
 export default function OrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,6 +20,28 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
   const resolvedParams = use(params);
 
   const { data: order } = useOrder(resolvedParams.id);
+  const addOrderNote = useAddOrderNote();
+  const cancelOrder = useCancelOrder();
+  const [note, setNote] = useState('');
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const handleAddNote = () => {
+    const trimmedNote = note.trim();
+    if (!trimmedNote) return;
+
+    addOrderNote.mutate(
+      { id: resolvedParams.id, note: trimmedNote },
+      {
+        onSuccess: () => setNote(''),
+      },
+    );
+  };
+
+  const handleCancelOrder = () => {
+    cancelOrder.mutate(resolvedParams.id, {
+      onSuccess: () => setShowCancelConfirm(false),
+    });
+  };
 
 
   //  const order = orders?.find((o) => o.id === orderId);
@@ -61,6 +86,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
           variant="ghost"
           icon={ArrowLeft}
           onClick={() => router.back()}
+          className='cursor-pointer'
         >
           Back to Orders
         </CustomBtn>
@@ -112,7 +138,56 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Admin Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <TextAreaField
+              label="Internal Note"
+              htmlFor="order-note"
+              id="order-note"
+              placeholder="Add an internal note for this order"
+              value={note}
+              onChange={setNote}
+              isInvalid={false}
+              errorMessage=""
+              rows={4}
+            />
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <CustomBtn
+                icon={FileText}
+                onClick={handleAddNote}
+                isLoading={addOrderNote.isPending}
+                isDisabled={!note.trim()}
+              >
+                Save Note
+              </CustomBtn>
+              <CustomBtn
+                variant="bordered"
+                icon={Ban}
+                onClick={() => setShowCancelConfirm(true)}
+                isDisabled={order.status === 'cancelled'}
+              >
+                {order.status === 'cancelled' ? 'Order Cancelled' : 'Cancel Order'}
+              </CustomBtn>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      <ConfirmModal
+        open={showCancelConfirm}
+        onOpenChange={setShowCancelConfirm}
+        title="Cancel Order"
+        description="This will cancel the order and prevent further processing"
+        message={`Are you sure you want to cancel order ${order.id}?`}
+        onConfirm={handleCancelOrder}
+        isLoading={cancelOrder.isPending}
+        confirmText="Cancel Order"
+        variant="warning"
+      />
     </div>
   );
 }

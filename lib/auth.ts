@@ -167,7 +167,7 @@ export const authOptions: NextAuthOptions = {
           emailVerified: (token.emailVerified as boolean) ?? false,
           fullName: (token.fullName as string) ?? null,
           phone: (token.phone as string) ?? null,
-          role: (token.role as User["role"]) ?? "OPERATION",
+          role: (token.role as User["role"]) ?? "OPERATIONS_ADMIN",
           isActive: (token.isActive as boolean) ?? true,
           isSuspended: (token.isSuspended as boolean) ?? false,
           googleId: (token.googleId as string) ?? "",

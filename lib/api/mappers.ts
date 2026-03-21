@@ -13,23 +13,34 @@ const formatName = (user: ApiUser) => {
 };
 
 export const mapApiUserToUser = (user: ApiUser): User => {
-  const roleValue = user.role ?? "operations_admin";
-  const roleUpper = roleValue.toUpperCase();
-  const roleLower = roleValue.toLowerCase();
+  const roleValue = (user.role ?? "OPERATIONS_ADMIN").toUpperCase();
   const role =
-    roleUpper === "SELLER" || roleUpper === "BUYER"
-      ? (roleUpper as User["role"])
-      : roleLower === "super_admin" || roleLower === "operations_admin"
-        ? (roleLower as User["role"])
-        : "operations_admin";
+    roleValue === "SUPER_ADMIN" ||
+    roleValue === "OPERATIONS_ADMIN" ||
+    roleValue === "SELLER" ||
+    roleValue === "BUYER"
+      ? (roleValue as User["role"])
+      : "OPERATIONS_ADMIN";
 
   return {
     id: user.id,
     name: formatName(user),
     email: user.email,
+    emailVerified: user.emailVerified ?? false,
     phone: user.phone ?? "",
     role,
     status: user.isActive === false ? "inactive" : "active",
+    isSuspended: user.isSuspended ?? false,
+    walletBalance: user.walletBalance ?? 0,
+    currency: user.currency ?? "USD",
+    language: user.language ?? "en",
+    timezone: user.timezone ?? "",
+    lastLoginAt: user.lastLoginAt ?? null,
+    notificationPreferences: user.notificationPreferences ?? null,
+    sellerStatus: user.profile?.sellerStatus ?? null,
+    isVerified: user.profile?.isVerified ?? false,
+    firstName: user.profile?.firstName ?? null,
+    lastName: user.profile?.lastName ?? null,
     createdAt: user.createdAt ?? new Date(0).toISOString(),
     country: user.timezone ?? "",
     totalOrders: 0,

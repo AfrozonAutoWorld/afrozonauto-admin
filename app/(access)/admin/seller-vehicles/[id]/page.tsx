@@ -10,7 +10,6 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { useToggleAvailability, useToggleFeatured, useVehicle } from '@/lib/hooks/useVehicles';
 import {
   ArrowLeft,
-  Edit,
   Star,
   MapPin,
   Gauge,
@@ -65,6 +64,7 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
             variant="ghost"
             icon={ArrowLeft}
             onClick={() => router.back()}
+            className='cursor-pointer'
           >
             Back to Cars
           </CustomBtn>
@@ -90,13 +90,6 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
               isLoading={toggleAvailability.isPending}
             >
               Mark as {isAvailable ? 'Sold' : 'Available'}
-            </CustomBtn>
-
-            <CustomBtn
-              icon={Edit}
-              onClick={() => router.push(`/cars/${car.id}/edit`)}
-            >
-              Edit
             </CustomBtn>
           </div>
         </div>
@@ -145,6 +138,13 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
               </div>
 
               {/* Description */}
+              {car.description && (
+                <div>
+                  <h3 className="font-semibold mb-2">Description</h3>
+                  <p className="text-muted-foreground">{car.description}</p>
+                </div>
+              )}
+
               {car.features?.length > 0 && (
                 <div>
                   <h3 className="font-semibold mb-2">Features</h3>
@@ -179,8 +179,15 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Location</p>
-                    <p className="font-medium">{car.dealerCity}, {car.dealerState}</p>
-                    <p className="text-xs text-muted-foreground">{car.dealerZipCode}</p>
+                    <p className="font-medium">
+                      {car.city || car.dealerCity || 'N/A'}
+                      {(car.country || car.dealerState) ? `, ${car.country || car.dealerState}` : ''}
+                    </p>
+                    {(car.dealerZipCode || car.dealerName) && (
+                      <p className="text-xs text-muted-foreground">
+                        {car.dealerZipCode || car.dealerName}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -199,11 +206,33 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
                     <DollarSign className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
-
+                    <p className="text-sm text-muted-foreground">Listing Type</p>
                     <StatusBadge status={car.source === 'API' ? 'api' : 'manual'} />
-
                   </div>
                 </div>
+
+                {(car.condition || car.bodyType || car.driveType) && (
+                  <div className="space-y-2">
+                    {car.condition && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Condition</p>
+                        <p className="font-medium capitalize">{car.condition}</p>
+                      </div>
+                    )}
+                    {car.bodyType && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Body Type</p>
+                        <p className="font-medium">{car.bodyType}</p>
+                      </div>
+                    )}
+                    {car.driveType && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Drive Type</p>
+                        <p className="font-medium">{car.driveType}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

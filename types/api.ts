@@ -36,6 +36,7 @@ export type ApiUser = {
   suspensionUntil?: string | null;
   walletBalance?: number;
   currency?: string;
+  payoutPinSet?: boolean;
   language?: string;
   timezone?: string | null;
   notificationPreferences?: string | null;

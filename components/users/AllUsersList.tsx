@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -30,13 +31,19 @@ import { useRouter } from 'next/navigation';
 
 export function UsersPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const canManageUserStatus = session?.user.role === 'SUPER_ADMIN';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const limit = 10;
-  const { data, isLoading } = useUsers({ page, limit });
+  const { data, isLoading } = useUsers({
+    page,
+    limit,
+    //search: searchQuery.trim() || undefined,
+  });
   const [addUserModal, setAddUserModal] = useState(false);
 
   const toggleStatus = useToggleUserStatus();
@@ -47,11 +54,9 @@ export function UsersPage() {
 
 
 
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.country.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
 
   const handleToggleStatus = (userId: string) => {
     setSelectedUserId(userId);
@@ -98,7 +103,7 @@ export function UsersPage() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold">
-                    {users.filter(u => u.role === 'super_admin').length}
+                    {users.filter(u => u.role === 'SUPER_ADMIN').length}
                   </div>
                   <p className="text-sm text-muted-foreground">Super Admins</p>
                 </CardContent>
@@ -107,37 +112,24 @@ export function UsersPage() {
           )}
 
           {/* Search Bar */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search users by name, email, or country..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                <CustomBtn
-                  icon={UserPlus}
-                  onPress={() => setAddUserModal(true)}
-                  type="submit"
-                  isLoading={isLoading}
-                  className="bg-emerald-600 text-white rounded-lg cursor-pointer px-4 font-semibold text-lg"
-                >
-                  Add User
-                </CustomBtn>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-end gap-4 pt-6">
+            <CustomBtn
+              icon={UserPlus}
+              onPress={() => setAddUserModal(true)}
+              type="submit"
+              isLoading={isLoading}
+              className="bg-emerald-600 text-white rounded-lg cursor-pointer px-4 font-semibold text-lg"
+            >
+              Add User
+            </CustomBtn>
+          </div>
 
           {/* Users Table */}
           <Card>
             <CardContent className="p-0">
               {isLoading ? (
                 <LoadingSpinner text="Loading users..." />
-              ) : filteredUsers.length > 0 ? (
+              ) : users.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -152,7 +144,7 @@ export function UsersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => (
+                    {users.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -209,12 +201,16 @@ export function UsersPage() {
                                 <User className="mr-2 h-4 w-4" />
                                 View Orders
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleToggleStatus(user.id)}
-                              >
-                                {user.status === 'active' ? 'Deactivate' : 'Activate'} User
-                              </DropdownMenuItem>
+                              {canManageUserStatus && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleToggleStatus(user.id)}
+                                  >
+                                    {user.status === 'active' ? 'Deactivate' : 'Activate'} User
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -229,7 +225,7 @@ export function UsersPage() {
                   description={searchQuery ? "Try adjusting your search" : "Start by adding your first user"}
                   action={{
                     label: "Add User",
-                    onClick: () => console.log('Add user'),
+                    onClick: () => setAddUserModal(true),
                     icon: UserPlus,
                   }}
                 />
@@ -279,17 +275,19 @@ export function UsersPage() {
 
 
       {/* Confirm Modal */}
-      <ConfirmModal
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title={`${selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'} User`}
-        description="This will change the user's access to the platform"
-        message={`Are you sure you want to ${selectedUser?.status === 'active' ? 'deactivate' : 'activate'} ${selectedUser?.name}?`}
-        onConfirm={confirmToggleStatus}
-        isLoading={toggleStatus.isPending}
-        variant={selectedUser?.status === 'active' ? 'warning' : 'default'}
-        confirmText={selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'}
-      />
+      {canManageUserStatus && (
+        <ConfirmModal
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={`${selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'} User`}
+          description="This will change the user's access to the platform"
+          message={`Are you sure you want to ${selectedUser?.status === 'active' ? 'deactivate' : 'activate'} ${selectedUser?.name}?`}
+          onConfirm={confirmToggleStatus}
+          isLoading={toggleStatus.isPending}
+          variant={selectedUser?.status === 'active' ? 'warning' : 'default'}
+          confirmText={selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'}
+        />
+      )}
 
     </>
   );

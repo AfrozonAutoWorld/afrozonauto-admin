@@ -20,10 +20,10 @@ export default function RootPage() {
 
     if (status === 'authenticated') {
       const role = session?.user?.role;
-      if (role === 'OPERATION') {
-        router.replace('/operations/dashboard');
-      } else {
+      if (role === 'SUPER_ADMIN' || role === 'OPERATIONS_ADMIN') {
         router.replace('/admin/dashboard');
+      } else {
+        router.replace('/unauthorized');
       }
     }
   }, [status, session, router]);

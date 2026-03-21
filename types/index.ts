@@ -1,4 +1,8 @@
-export type UserRole = "super_admin" | "operations_admin" | "SELLER" | "BUYER";
+export type UserRole =
+  | "SUPER_ADMIN"
+  | "OPERATIONS_ADMIN"
+  | "SELLER"
+  | "BUYER";
 
 export type OrderStatus = "pending" | "paid" | "cancelled";
 
@@ -10,9 +14,21 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  emailVerified?: boolean;
   phone: string;
   role: UserRole;
   status: "active" | "inactive";
+  isSuspended?: boolean;
+  walletBalance?: number;
+  currency?: string;
+  language?: string;
+  timezone?: string;
+  lastLoginAt?: string | null;
+  notificationPreferences?: string | null;
+  sellerStatus?: string | null;
+  isVerified?: boolean;
+  firstName?: string | null;
+  lastName?: string | null;
   createdAt: string;
   country: string;
   totalOrders: number;
@@ -86,7 +102,7 @@ export interface DashboardStats {
 
 export interface Activity {
   id: string;
-  type: "order" | "payment" | "user" | "car";
+  type: "order" | "payment" | "user" | "car" | "shipment";
   description: string;
   timestamp: string;
   userId?: string;
@@ -101,6 +117,17 @@ export interface Notification {
   message: string;
   recipient: string;
   createdAt: string;
+  isRead?: boolean;
+  readAt?: string | null;
+  actionUrl?: string;
+  actionLabel?: string;
+}
+
+export interface NotificationStats {
+  totalSent: number;
+  delivered: number;
+  pending: number;
+  orderAlerts: number;
 }
 
 export interface AddCarForm {
