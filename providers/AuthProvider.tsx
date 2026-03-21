@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Preloader } from '@/components/layout/Preloader';
 
-const PUBLIC_ROUTES = ['/login', '/unauthorized'];
+const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password', '/unauthorized'];
 
 const ROLE_HOME_MAP: Record<string, string> = {
   SUPER_ADMIN: '/admin/dashboard',

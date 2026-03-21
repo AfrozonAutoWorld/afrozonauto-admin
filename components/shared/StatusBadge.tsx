@@ -13,6 +13,7 @@ type StatusType =
   | 'paid'
   | 'failed'
   | 'refunded'
+  | 'verified'
   | 'new'
   | 'used'
   | 'certified'
@@ -71,6 +72,11 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
     refunded: {
       variant: 'destructive',
       label: 'Refunded'
+    },
+    verified: {
+      variant: 'default',
+      label: 'Verified',
+      className: 'bg-emerald-600 hover:bg-emerald-500'
     },
     new: {
       variant: 'default',

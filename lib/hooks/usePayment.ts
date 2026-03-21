@@ -119,6 +119,7 @@ export function useInitiateRefund() {
       apiClient.post(API_ROUTES.payments.initiateRefund(paymentId), { amount }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["payments", "stats"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Refund initiated successfully");
@@ -137,6 +138,7 @@ export function useConfirmPayment() {
       apiClient.patch(API_ROUTES.payments.confirmPayment(paymentId), { note }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["payments", "stats"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Payment confirmed successfully");
@@ -155,6 +157,7 @@ export function useRejectPayment() {
       apiClient.patch(API_ROUTES.payments.rejectPayment(paymentId), { note }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["payments", "stats"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Payment rejected successfully");

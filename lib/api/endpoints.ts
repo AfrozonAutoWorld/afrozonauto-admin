@@ -1,4 +1,9 @@
 export const API_ROUTES = {
+  auth: {
+    forgotPassword: "/auth/forgot-password",
+    resetPassword: "/auth/reset-password",
+    getCurrentUser: "/auth/me",
+  },
   stats: {
     platformStat: "/admin/dashboard/stats",
     pendingOrder: "/admin/dashboard/pending-orders",
@@ -61,6 +66,7 @@ export const API_ROUTES = {
     getOrderStatReveue: "/orders/stats/revenue",
   },
   profile: {
+    getCurrentProfile: "/profile",
     getAllProfiles: "/profile",
     deleteAProfile: (id: string) => `/profile/${id}`,
   },

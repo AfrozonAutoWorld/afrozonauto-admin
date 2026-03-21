@@ -52,7 +52,7 @@ export default function PaymentsPage() {
   const [page, setPage] = useState(1);
   const limit = 10;
 
-  const { data, isLoading } = usePayments({
+  const { data, isLoading, refetch } = usePayments({
     page,
     limit,
     search: searchQuery.trim() || undefined,
@@ -88,7 +88,8 @@ export default function PaymentsPage() {
         initiateRefund.mutate(
           { paymentId: payment.id, amount: payment.amount },
           {
-            onSuccess: () => {
+            onSuccess: async () => {
+              await refetch();
               setRefundModalOpen(false);
               setSelectedPayment(null);
             },
@@ -105,7 +106,8 @@ export default function PaymentsPage() {
     const mutation = reviewAction === 'confirm' ? confirmPayment : rejectPayment;
 
     mutation.mutate(payload, {
-      onSuccess: () => {
+      onSuccess: async () => {
+        await refetch();
         setReviewModalOpen(false);
         setReviewPaymentId(null);
         setReviewAction(null);

@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronUp,
   ChevronDown,
+  UserCircle2,
 } from 'lucide-react';
 import { useUIStore } from '@/lib/store/useUIStore';
 import { Button } from '@/components/ui/button';
@@ -84,6 +85,12 @@ const buildMenuItems = (role?: string): MenuItem[] => {
       title: 'Payments',
       href: `${basePath}/payments`,
       icon: CreditCard,
+      roles: adminRoles,
+    },
+    {
+      title: 'Profile',
+      href: `${basePath}/profile`,
+      icon: UserCircle2,
       roles: adminRoles,
     },
   ].filter((item) => role && item.roles.includes(role as AppRole));
@@ -228,7 +235,11 @@ export function Sidebar() {
 
   // Check if user is authenticated using NextAuth session
   const isAuthenticated = status === 'authenticated';
-  const isAuthRoute = pathname === '/login' || pathname === '/';
+  const isAuthRoute =
+    pathname === '/login' ||
+    pathname === '/forgot-password' ||
+    pathname === '/reset-password' ||
+    pathname === '/';
   const canRenderSidebar =
     session?.user.role === 'SUPER_ADMIN' ||
     session?.user.role === 'OPERATIONS_ADMIN';

@@ -135,9 +135,6 @@ export function LoginPage() {
             </div>
           </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Forgot password? Contact system administrator</p>
-          </div>
         </CardContent>
       </Card>
     </div>
