@@ -470,25 +470,39 @@ const pickVehicleEntity = (payload: unknown): Vehicle => {
 };
 
 export interface CreateVehiclePayload {
-  make: string;
-  modelName: string;
   year: number | string;
-  price: number | string;
+  make: string;
+  model: string;
+  askingPrice: number | string;
+  vehicleType?: string;
+  trim?: string;
+  bodyStyle?: string;
   mileage: number | string;
+  vin?: string;
+  drivetrain?: string;
+  exteriorColor?: string;
+  cylinders?: number | string;
   condition: string;
+  titleStatus: string;
+  accidentHistory: string;
+  knownIssues?: string;
+  keys?: number | string;
+  features?: string;
+  highlights?: string;
+  modifications?: string;
   transmission: string;
   fuelType: string;
-  color: string;
-  vin: string;
-  description: string;
-  country: string;
+  showAskingPrice?: boolean | string;
+  allowOffers?: boolean | string;
+  additionalNotes?: string;
+  contactFirstName: string;
+  contactLastName: string;
+  contactEmail: string;
+  contactPhone: string;
   city: string;
-  engineSize?: string;
-  doors?: number | string;
-  seats?: number | string;
-  driveType?: string;
-  bodyType?: string;
-  features?: string[];
+  zipCode: string;
+  preferredContact?: string;
+  bestTimeToReach?: string;
 }
 
 export type UpdateVehiclePayload = {

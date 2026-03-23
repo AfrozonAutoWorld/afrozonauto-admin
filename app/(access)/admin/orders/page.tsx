@@ -30,18 +30,40 @@ import { Button } from '@nextui-org/react';
 import { CustomBtn } from '@/components/shared';
 
 const orderStatuses = [
-  'PENDING',
-  'CONFIRMED',
-  'INSPECTION',
+  'PENDING_QUOTE',
+  'QUOTE_SENT',
+  'QUOTE_ACCEPTED',
+  'QUOTE_REJECTED',
+  'QUOTE_EXPIRED',
+  'DEPOSIT_PENDING',
+  'DEPOSIT_PAID',
+  'HALF_DEPOSIT_PAID',
+  'AWAITING_BALANCE',
+  'BALANCE_PAID',
+  'INSPECTION_PENDING',
+  'INSPECTION_COMPLETE',
+  'INSPECTION_FAILED',
+  'AWAITING_APPROVAL',
+  'APPROVED',
+  'REJECTED',
+  'PURCHASE_IN_PROGRESS',
+  'PURCHASED',
+  'EXPORT_PENDING',
+  'SHIPPED',
   'IN_TRANSIT',
-  'CUSTOMS',
-  'ARRIVED',
+  'ARRIVED_PORT',
+  'CUSTOMS_CLEARANCE',
+  'CUSTOMS_HOLD',
+  'CLEARED',
+  'DELIVERY_SCHEDULED',
+  'OUT_FOR_DELIVERY',
   'DELIVERED',
   'CANCELLED',
   'REFUNDED',
+  'PARTIALLY_REFUNDED',
 ] as const;
 
-const priorityOptions = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
+const priorityOptions = ['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const;
 const filterFieldClassName =
   'h-11 rounded-lg border-slate-200 bg-white shadow-none transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500/20';
 const filterLabelClassName = 'text-sm font-medium text-slate-700';
@@ -51,7 +73,7 @@ export default function AllOrdersPage() {
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [userId, setUserId] = useState('');
   const [priority, setPriority] = useState('all');
   const [shippingMethod, setShippingMethod] = useState('');
@@ -64,12 +86,7 @@ export default function AllOrdersPage() {
     page,
     limit,
     search: search.trim() || undefined,
-    status: statusFilter
-      ? statusFilter
-        .split(',')
-        .map((status) => status.trim().toUpperCase())
-        .filter(Boolean)
-      : undefined,
+    status: statusFilter !== 'all' ? [statusFilter] : undefined,
     userId: userId.trim() || undefined,
     priority: priority !== 'all' ? priority : undefined,
     shippingMethod: shippingMethod.trim() || undefined,
@@ -95,7 +112,7 @@ export default function AllOrdersPage() {
 
   const clearFilters = () => {
     setSearch('');
-    setStatusFilter('');
+    setStatusFilter('all');
     setUserId('');
     setPriority('all');
     setShippingMethod('');
@@ -147,19 +164,30 @@ export default function AllOrdersPage() {
 
               <div className="space-y-2">
                 <label className={filterLabelClassName} htmlFor="order-status">
-                  Statuses
+                  Status
                 </label>
-                <Input
-                  id="order-status"
-                  placeholder="PENDING,CONFIRMED"
+                <Select
                   value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value);
+                  onValueChange={(value) => {
+                    setStatusFilter(value);
                     setPage(1);
                   }}
-                  list="order-status-options"
-                  className={filterFieldClassName}
-                />
+                >
+                  <SelectTrigger
+                    id="order-status"
+                    className={`w-full ${filterFieldClassName}`}
+                  >
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg border-slate-200 shadow-lg max-h-80">
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    {orderStatuses.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status.replace(/_/g, ' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -276,12 +304,6 @@ export default function AllOrdersPage() {
                 Clear Filters
               </CustomBtn>
             </div>
-
-            <datalist id="order-status-options">
-              {orderStatuses.map((status) => (
-                <option key={status} value={status} />
-              ))}
-            </datalist>
           </CardContent>
         </Card>
 
