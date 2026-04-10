@@ -3,27 +3,30 @@
 import { use, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Header } from '@/components/layout/Header';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CustomBtn } from '@/components/shared/CustomBtn';
-import { StatusBadge } from '@/components/shared/StatusBadge';
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
-import { ConfirmModal } from '@/components/shared';
-import { useToggleUserStatus, useUser } from '@/lib/hooks/useUsers';
-import { useOrders } from '@/lib/hooks/useOrders';
+import { format } from 'date-fns';
 import {
   ArrowLeft,
-  Mail,
-  Phone,
-  MapPin,
+  BadgeCheck,
   Calendar,
+  Eye,
+  Mail,
+  MapPin,
+  Phone,
   Shield,
   ShoppingCart,
-  Eye,
   User as UserIcon,
-  Wallet
+  UserX,
+  Wallet,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { Header } from '@/components/layout/Header';
+import { TextAreaField } from '@/components/Form';
+import { EmptyState } from '@/components/shared';
+import { ConfirmModal } from '@/components/shared';
+import { CustomBtn } from '@/components/shared/CustomBtn';
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+import { Modal } from '@/components/shared/Modal';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -32,26 +35,44 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { EmptyState } from '@/components/shared';
-
+import { useOrders } from '@/lib/hooks/useOrders';
+import {
+  useApproveSellerAccount,
+  useRejectSellerAccount,
+  useToggleUserStatus,
+  useUser,
+} from '@/lib/hooks/useUsers';
 
 export default function UserProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
   const { data: session } = useSession();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sellerReviewModalOpen, setSellerReviewModalOpen] = useState(false);
+  const [sellerReviewAction, setSellerReviewAction] = useState<'approve' | 'reject' | null>(null);
+  const [sellerReviewNote, setSellerReviewNote] = useState('');
+
   const { data: user, isLoading: userLoading } = useUser(resolvedParams.id);
-  const { data: allOrdersData } = useOrders({ userId: resolvedParams.id, page: 1, limit: 50 });
+  const { data: allOrdersData } = useOrders({
+    userId: resolvedParams.id,
+    page: 1,
+    limit: 50,
+  });
   const toggleStatus = useToggleUserStatus();
+  const approveSellerAccount = useApproveSellerAccount();
+  const rejectSellerAccount = useRejectSellerAccount();
+
   const allOrders = allOrdersData?.items || [];
   const canManageUserStatus = session?.user.role === 'SUPER_ADMIN';
+  const canManageSellerReview =
+    session?.user.role === 'SUPER_ADMIN' ||
+    session?.user.role === 'OPERATIONS_ADMIN';
 
-  // Filter orders for this user
-  const userOrders = allOrders.filter(order => order.userId === resolvedParams.id);
+  const userOrders = allOrders.filter((order) => order.userId === resolvedParams.id);
 
   const formatRole = (role: string) =>
     role
-      .replace(/_/g, " ")
+      .replace(/_/g, ' ')
       .toLowerCase()
       .replace(/\b\w/g, (char) => char.toUpperCase());
 
@@ -61,6 +82,51 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
 
     toggleStatus.mutate(userId, {
       onSuccess: () => setConfirmOpen(false),
+    });
+  };
+
+  const sellerStatus = (
+    user?.sellerStatus ??
+    (user?.role === 'SELLER' ? 'pending' : 'not_applied')
+  ).toLowerCase();
+  const sellerBadgeStatus = `seller_${sellerStatus}`;
+  const isSellerAccount = user?.role === 'SELLER' || sellerStatus !== 'not_applied';
+  const isSellerReviewSubmitting =
+    approveSellerAccount.isPending || rejectSellerAccount.isPending;
+
+  const openSellerReviewModal = (action: 'approve' | 'reject') => {
+    setSellerReviewAction(action);
+    setSellerReviewNote('');
+    setSellerReviewModalOpen(true);
+  };
+
+  const closeSellerReviewModal = () => {
+    setSellerReviewModalOpen(false);
+    setSellerReviewAction(null);
+    setSellerReviewNote('');
+  };
+
+  const submitSellerReview = () => {
+    if (!user || !sellerReviewAction) {
+      return;
+    }
+
+    if (sellerReviewAction === 'reject' && !sellerReviewNote.trim()) {
+      return;
+    }
+
+    const payload = {
+      userId: user.id,
+      profileId: user.profileId,
+      note: sellerReviewAction === 'reject' ? sellerReviewNote.trim() : undefined,
+    };
+    const mutation =
+      sellerReviewAction === 'approve'
+        ? approveSellerAccount
+        : rejectSellerAccount;
+
+    mutation.mutate(payload, {
+      onSuccess: () => closeSellerReviewModal(),
     });
   };
 
@@ -95,7 +161,6 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
       <Header title="User Profile" />
 
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        {/* Back Button */}
         <CustomBtn
           variant="ghost"
           icon={ArrowLeft}
@@ -109,28 +174,29 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
             <CustomBtn
               variant="bordered"
               onClick={() => setConfirmOpen(true)}
-              className={user.status === 'active' ? 'border-red-200 text-red-700 hover:bg-red-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'}
+              className={
+                user.status === 'active'
+                  ? 'border-red-200 text-red-700 hover:bg-red-50'
+                  : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+              }
             >
               {user.status === 'active' ? 'Deactivate User' : 'Activate User'}
             </CustomBtn>
           </div>
         )}
 
-        {/* User Profile Card */}
         <Card>
           <CardHeader>
             <CardTitle>Profile Information</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-6">
-              {/* Avatar */}
               <div className="flex justify-center sm:justify-start">
                 <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center">
                   <UserIcon className="h-12 w-12 text-primary" />
                 </div>
               </div>
 
-              {/* User Details */}
               <div className="flex-1 space-y-4">
                 <div>
                   <h2 className="text-2xl font-bold">{user.name}</h2>
@@ -162,9 +228,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
 
                   <div className="flex items-center gap-2">
                     <Shield className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">
-                    {formatRole(user.role)}
-                    </span>
+                    <span className="text-sm">{formatRole(user.role)}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -184,13 +248,15 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
 
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Seller Status:</span>
-                    <span className="text-sm">{formatRole(user.sellerStatus ?? 'not_applied')}</span>
+                    <StatusBadge status={sellerBadgeStatus} />
                   </div>
 
                   {user.lastLoginAt && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">Last Login:</span>
-                      <span className="text-sm">{format(new Date(user.lastLoginAt), 'MMM d, yyyy HH:mm')}</span>
+                      <span className="text-sm">
+                        {format(new Date(user.lastLoginAt), 'MMM d, yyyy HH:mm')}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -211,6 +277,93 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
             variant={user.status === 'active' ? 'warning' : 'default'}
             confirmText={user.status === 'active' ? 'Deactivate' : 'Activate'}
           />
+        )}
+
+        {isSellerAccount && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Seller Account Review</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Current Seller Status</p>
+                  <div className="mt-2">
+                    <StatusBadge status={sellerBadgeStatus} />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">Seller Verified At</p>
+                  <p className="mt-2 text-sm font-medium">
+                    {user.sellerVerifiedAt
+                      ? format(new Date(user.sellerVerifiedAt), 'MMM d, yyyy HH:mm')
+                      : 'Not approved yet'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">Profile ID</p>
+                  <p className="mt-2 text-sm font-mono">
+                    {user.profileId || 'No nested profile'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">Identification Type</p>
+                  <p className="mt-2 text-sm font-medium">
+                    {user.identificationType
+                      ? formatRole(user.identificationType)
+                      : 'Not provided'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">Business Name</p>
+                  <p className="mt-2 text-sm font-medium">
+                    {user.businessName || 'Not provided'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-muted-foreground">Tax ID</p>
+                  <p className="mt-2 text-sm font-medium">
+                    {user.taxId || 'Not provided'}
+                  </p>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <p className="text-sm text-muted-foreground">Latest Review Note</p>
+                  <p className="mt-2 text-sm">
+                    {user.sellerRejectedReason ||
+                      (user.sellerVerifiedAt
+                        ? 'Seller account is approved.'
+                        : 'No seller review note recorded yet.')}
+                  </p>
+                </div>
+              </div>
+
+              {canManageSellerReview && (
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <CustomBtn
+                    onClick={() => openSellerReviewModal('approve')}
+                    isDisabled={sellerStatus === 'approved'}
+                    icon={BadgeCheck}
+                  >
+                    {sellerStatus === 'approved' ? 'Seller Approved' : 'Approve Seller'}
+                  </CustomBtn>
+                  <CustomBtn
+                    variant="bordered"
+                    onClick={() => openSellerReviewModal('reject')}
+                    icon={UserX}
+                    className="border-red-200 text-red-700 hover:bg-red-50"
+                  >
+                    Reject Seller
+                  </CustomBtn>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -245,14 +398,15 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
           <Card>
             <CardContent className="pt-6">
               <div className="text-2xl font-bold">
-                {user.firstName || user.lastName ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : '—'}
+                {user.firstName || user.lastName
+                  ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+                  : '—'}
               </div>
               <p className="text-sm text-muted-foreground">Profile Name</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Order Statistics */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardContent className="pt-6">
@@ -264,8 +418,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
           <Card>
             <CardContent className="pt-6">
               <div className="text-2xl font-bold">
-
-                {userOrders.filter(o => o.status === 'paid').length}
+                {userOrders.filter((order) => order.status === 'paid').length}
               </div>
               <p className="text-sm text-muted-foreground">Completed</p>
             </CardContent>
@@ -274,7 +427,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
           <Card>
             <CardContent className="pt-6">
               <div className="text-2xl font-bold">
-                {userOrders.filter(o => o.status === 'pending').length}
+                {userOrders.filter((order) => order.status === 'pending').length}
               </div>
               <p className="text-sm text-muted-foreground">Pending</p>
             </CardContent>
@@ -284,8 +437,8 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
             <CardContent className="pt-6">
               <div className="text-2xl font-bold">
                 ${userOrders
-                  .filter(o => o.status === 'paid')
-                  .reduce((sum, o) => sum + o.amount, 0)
+                  .filter((order) => order.status === 'paid')
+                  .reduce((sum, order) => sum + order.amount, 0)
                   .toLocaleString()}
               </div>
               <p className="text-sm text-muted-foreground">Total Spent</p>
@@ -293,7 +446,6 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
           </Card>
         </div>
 
-        {/* Order History Link */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -368,6 +520,53 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
           </CardContent>
         </Card>
       </div>
+
+      <Modal
+        open={sellerReviewModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeSellerReviewModal();
+            return;
+          }
+          setSellerReviewModalOpen(open);
+        }}
+        title={
+          sellerReviewAction === 'approve'
+            ? 'Approve Seller Account'
+            : 'Reject Seller Account'
+        }
+        description={
+          sellerReviewAction === 'approve'
+            ? 'Confirm this seller account.'
+            : 'Add the reason for rejecting this seller account.'
+        }
+        showFooter
+        onConfirm={submitSellerReview}
+        confirmText={
+          sellerReviewAction === 'approve' ? 'Approve Seller' : 'Reject Seller'
+        }
+        isLoading={isSellerReviewSubmitting}
+      >
+        {sellerReviewAction === 'reject' ? (
+          <TextAreaField
+            label="Rejection Reason"
+            htmlFor="seller-review-note"
+            id="seller-review-note"
+            placeholder="Explain why this seller account is being rejected"
+            value={sellerReviewNote}
+            onChange={setSellerReviewNote}
+            isInvalid={!sellerReviewNote.trim() && isSellerReviewSubmitting}
+            errorMessage="A review note is required"
+            required
+            disableAutosize
+            fixedHeightClassName="h-32"
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            This action will verify the seller using the profile/application ID only.
+          </p>
+        )}
+      </Modal>
     </div>
   );
 }

@@ -2,31 +2,33 @@
 
 import { use } from 'react';
 import { useRouter } from 'next/navigation';
-import { Header } from '@/components/layout/Header';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CustomBtn } from '@/components/shared/CustomBtn';
-import { StatusBadge } from '@/components/shared/StatusBadge';
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
-import { useToggleAvailability, useToggleFeatured, useVehicle } from '@/lib/hooks/useVehicles';
-import {
-  ArrowLeft,
-  Star,
-  MapPin,
-  Gauge,
-  DollarSign,
-  Package
-} from 'lucide-react';
 import { format } from 'date-fns';
 import Image from 'next/image';
+import {
+  ArrowLeft,
+  DollarSign,
+  Gauge,
+  MapPin,
+  Package,
+  Star,
+} from 'lucide-react';
+import { Header } from '@/components/layout/Header';
+import { CustomBtn } from '@/components/shared/CustomBtn';
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  useToggleFeatured,
+  useVehicle,
+} from '@/lib/hooks/useVehicles';
 
 export default function CarDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
   const { data: car, isLoading } = useVehicle(resolvedParams.id);
   const toggleFeatured = useToggleFeatured();
-  const toggleAvailability = useToggleAvailability();
+
   const isFeatured = car?.featured ?? false;
-  const isAvailable = car?.status === 'AVAILABLE';
 
   if (isLoading) {
     return (
@@ -64,12 +66,12 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
             variant="ghost"
             icon={ArrowLeft}
             onClick={() => router.back()}
-            className='cursor-pointer'
+            className="cursor-pointer"
           >
             Back to Cars
           </CustomBtn>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <CustomBtn
               variant="bordered"
               onClick={() => toggleFeatured.mutate({ id: car.id, featured: !isFeatured })}
@@ -78,27 +80,12 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
               <Star className={`mr-2 h-4 w-4 ${isFeatured ? 'fill-yellow-500 text-yellow-500' : ''}`} />
               {isFeatured ? 'Unfeature' : 'Feature'}
             </CustomBtn>
-
-            <CustomBtn
-              variant="bordered"
-              onClick={() =>
-                toggleAvailability.mutate({
-                  id: car.id,
-                  status: isAvailable ? 'SOLD' : 'AVAILABLE',
-                })
-              }
-              isLoading={toggleAvailability.isPending}
-            >
-              Mark as {isAvailable ? 'Sold' : 'Available'}
-            </CustomBtn>
           </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Car Image and Basic Info */}
           <Card className="lg:col-span-2">
             <CardContent className="pt-6 space-y-6">
-              {/* Image */}
               <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-muted">
                 {car.images[0] ? (
                   <Image
@@ -114,7 +101,6 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
                 )}
               </div>
 
-              {/* Title and Status */}
               <div>
                 <div className="flex items-start justify-between mb-2">
                   <div>
@@ -137,7 +123,6 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
 
-              {/* Description */}
               {car.description && (
                 <div>
                   <h3 className="font-semibold mb-2">Description</h3>
@@ -148,13 +133,12 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
               {car.features?.length > 0 && (
                 <div>
                   <h3 className="font-semibold mb-2">Features</h3>
-                  <p className="text-muted-foreground">{car.features.join(", ")}</p>
+                  <p className="text-muted-foreground">{car.features.join(', ')}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Details Sidebar */}
           <div className="space-y-4">
             <Card>
               <CardHeader>
@@ -181,7 +165,9 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
                     <p className="text-sm text-muted-foreground">Location</p>
                     <p className="font-medium">
                       {car.city || car.dealerCity || 'N/A'}
-                      {(car.country || car.dealerState) ? `, ${car.country || car.dealerState}` : ''}
+                      {(car.country || car.dealerState)
+                        ? `, ${car.country || car.dealerState}`
+                        : ''}
                     </p>
                     {(car.dealerZipCode || car.dealerName) && (
                       <p className="text-xs text-muted-foreground">
@@ -197,7 +183,9 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Source</p>
-                    <p className="font-medium">{car.source === 'API' ? 'API Import' : 'Manual Entry'}</p>
+                    <p className="font-medium">
+                      {car.source === 'API' ? 'API Import' : 'Manual Entry'}
+                    </p>
                   </div>
                 </div>
 
@@ -262,6 +250,7 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
           </div>
         </div>
       </div>
+
     </div>
   );
 }

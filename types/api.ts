@@ -60,15 +60,31 @@ export type ApiOrderUser = {
 export type ApiOrderVehicleSnapshot = {
   id?: string;
   vin?: string;
+  slug?: string | null;
   make?: string;
   model?: string;
   year?: number;
+  priceUsd?: number | null;
+  mileage?: number | null;
+  vehicleType?: string | null;
+  transmission?: string | null;
+  fuelType?: string | null;
+  engineSize?: string | null;
+  drivetrain?: string | null;
+  dealerName?: string | null;
+  dealerState?: string | null;
+  dealerCity?: string | null;
+  dealerZipCode?: string | null;
+  images?: string[] | null;
+  status?: string | null;
   apiListingId?: string;
 };
 
 export type ApiOrder = {
   id: string;
+  requestNumber?: string | null;
   status?: string;
+  previousStatus?: string[] | null;
   createdAt?: string;
   updatedAt?: string;
   userId?: string;
@@ -82,10 +98,15 @@ export type ApiOrder = {
   deliveryInstructions?: string | null;
   paymentBreakdown?: {
     totalUsd?: number;
+    totalUsedDeposit?: number | null;
+    shippingMethod?: string | null;
+    breakdown?: Record<string, number | string | null> | null;
   } | null;
   quotedPriceUsd?: number | null;
   depositAmountUsd?: number | null;
   totalLandedCostUsd?: number | null;
+  shippingMethod?: string | null;
+  paymentMethod?: string | null;
 };
 
 export type ApiPayment = {
@@ -95,18 +116,34 @@ export type ApiPayment = {
   amountUsd?: number | null;
   amountLocal?: number | null;
   localCurrency?: string | null;
+  exchangeRate?: number | null;
   paymentType?: string | null;
   paymentMethod?: string | null;
   paymentProvider?: string | null;
   status?: string | null;
+  escrowStatus?: string | null;
   transactionRef?: string | null;
   providerTransactionId?: string | null;
+  receiptUrl?: string | null;
+  evidenceUrls?: string[] | null;
+  evidencePublicIds?: string[] | null;
+  evidenceUploadedAt?: string | null;
+  adminConfirmedBy?: string | null;
+  adminConfirmedAt?: string | null;
+  adminNote?: string | null;
   refundAmount?: number | null;
+  refundReason?: string | null;
   refundedAt?: string | null;
+  refundedBy?: string | null;
+  description?: string | null;
   metadata?: {
     calculation?: {
       paymentAmount?: number | null;
     } | null;
   } | null;
   createdAt?: string;
+  updatedAt?: string;
+  completedAt?: string | null;
+  order?: ApiOrder | null;
+  user?: ApiOrderUser | null;
 };

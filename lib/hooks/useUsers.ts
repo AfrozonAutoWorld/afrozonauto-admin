@@ -28,6 +28,12 @@ type CreateUserPayload = {
   role: string;
 };
 
+type SellerReviewPayload = {
+  userId: string;
+  profileId?: string | null;
+  note?: string;
+};
+
 const getResponseMeta = (
   response: ApiResponse<Record<string, unknown>>,
 ): Record<string, unknown> | undefined => {
@@ -80,6 +86,93 @@ const fetchUser = async (id: string): Promise<User> => {
   return mapApiUserToUser(apiUser);
 };
 
+const isFallbackRouteError = (error: unknown) => {
+  const status = (error as AxiosError)?.response?.status;
+  return status === 404 || status === 405;
+};
+
+const buildSellerReviewPayload = (
+  status: "APPROVED" | "REJECTED",
+  note: string,
+) => {
+  const reviewedAt = new Date().toISOString();
+  const trimmedNote = note.trim();
+
+  return {
+    sellerStatus: status,
+    reviewNote: trimmedNote,
+    sellerReviewNote: trimmedNote,
+    isVerified: status === "APPROVED",
+    sellerVerifiedAt: status === "APPROVED" ? reviewedAt : null,
+    sellerRejectedReason: status === "REJECTED" ? trimmedNote : null,
+  };
+};
+
+const buildSellerReviewRequest = (approve: boolean, note?: string) => {
+  const trimmedNote = note?.trim() ?? "";
+
+  return {
+    approve,
+    ...(trimmedNote
+      ? {
+          note: trimmedNote,
+          reason: trimmedNote,
+          rejectionReason: trimmedNote,
+          reviewNote: trimmedNote,
+          sellerRejectedReason: trimmedNote,
+        }
+      : {}),
+  };
+};
+
+const verifySellerAccount = async ({
+  userId,
+  profileId,
+}: SellerReviewPayload) => {
+  const sellerProfileId = profileId ?? userId;
+
+  try {
+    await apiClient.patch(
+      API_ROUTES.sellers.verifySeller(sellerProfileId),
+      buildSellerReviewRequest(true),
+    );
+    return;
+  } catch (error) {
+    if (!isFallbackRouteError(error)) {
+      throw error;
+    }
+  }
+
+  await apiClient.patch(
+    API_ROUTES.users.updateUser(userId),
+    buildSellerReviewPayload("APPROVED", ""),
+  );
+};
+
+const rejectSellerAccount = async ({
+  userId,
+  profileId,
+  note,
+}: SellerReviewPayload) => {
+  const sellerProfileId = profileId ?? userId;
+  const trimmedNote = note?.trim() ?? "";
+  const payload = buildSellerReviewPayload("REJECTED", trimmedNote);
+
+  try {
+    await apiClient.patch(
+      API_ROUTES.sellers.rejectSeller(sellerProfileId),
+      buildSellerReviewRequest(false, trimmedNote),
+    );
+    return;
+  } catch (error) {
+    if (!isFallbackRouteError(error)) {
+      throw error;
+    }
+  }
+
+  await apiClient.patch(API_ROUTES.users.updateUser(userId), payload);
+};
+
 export function useUsers(params?: UsersListParams) {
   return useQuery({
     queryKey: ["users", params],
@@ -114,6 +207,40 @@ export function useToggleUserStatus() {
     },
     onError: () => {
       toast.error("Failed to update user status");
+    },
+  });
+}
+
+export function useApproveSellerAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, profileId }: SellerReviewPayload) =>
+      verifySellerAccount({ userId, profileId }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["users", variables.userId] });
+      toast.success("Seller account approved");
+    },
+    onError: () => {
+      toast.error("Failed to approve seller account");
+    },
+  });
+}
+
+export function useRejectSellerAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, profileId, note }: SellerReviewPayload) =>
+      rejectSellerAccount({ userId, profileId, note }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["users", variables.userId] });
+      toast.success("Seller account rejected");
+    },
+    onError: () => {
+      toast.error("Failed to reject seller account");
     },
   });
 }

@@ -139,6 +139,7 @@ export default function NotificationsPage() {
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="order_created">Order Created</SelectItem>
                     <SelectItem value="order_status_change">Order Status Changed</SelectItem>
+                    <SelectItem value="payment_confirmed">Payment Confirmed</SelectItem>
                     <SelectItem value="payment_received">Payment Received</SelectItem>
                     <SelectItem value="payment_failed">Payment Failed</SelectItem>
                     <SelectItem value="inspection_completed">Inspection Completed</SelectItem>

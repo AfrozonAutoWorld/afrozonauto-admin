@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api/client";
 import { API_ROUTES } from "@/lib/api/endpoints";
@@ -16,11 +21,43 @@ import {
 import { Payment } from "@/types";
 import { mapApiPaymentToPayment } from "@/lib/api/mappers";
 import type { ApiPayment } from "@/types/api";
+import { AxiosError } from "axios";
 
 type PaymentsListParams = PaginationParams & {
   status?: string;
   orderId?: string;
   search?: string;
+};
+
+const refreshPaymentQueries = async (
+  queryClient: QueryClient,
+  paymentId?: string,
+) => {
+  const tasks = [
+    queryClient.invalidateQueries({ queryKey: ["payments"] }),
+    queryClient.invalidateQueries({ queryKey: ["payments", "stats"] }),
+    queryClient.invalidateQueries({ queryKey: ["payments", "order"] }),
+    queryClient.invalidateQueries({ queryKey: ["orders"] }),
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+  ];
+
+  if (paymentId) {
+    tasks.push(
+      queryClient.invalidateQueries({
+        queryKey: ["payments", paymentId],
+        exact: true,
+      }),
+    );
+    tasks.push(
+      queryClient.refetchQueries({
+        queryKey: ["payments", paymentId],
+        exact: true,
+        type: "active",
+      }),
+    );
+  }
+
+  await Promise.all(tasks);
 };
 
 const getResponseMeta = (
@@ -117,11 +154,8 @@ export function useInitiateRefund() {
       amount: number;
     }) =>
       apiClient.post(API_ROUTES.payments.initiateRefund(paymentId), { amount }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-      queryClient.invalidateQueries({ queryKey: ["payments", "stats"] });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    onSuccess: async (_, variables) => {
+      await refreshPaymentQueries(queryClient, variables.paymentId);
       toast.success("Refund initiated successfully");
     },
     onError: () => {
@@ -135,16 +169,16 @@ export function useConfirmPayment() {
 
   return useMutation({
     mutationFn: ({ paymentId, note }: { paymentId: string; note: string }) =>
-      apiClient.patch(API_ROUTES.payments.confirmPayment(paymentId), { note }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-      queryClient.invalidateQueries({ queryKey: ["payments", "stats"] });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      toast.success("Payment confirmed successfully");
+      apiClient.patch(API_ROUTES.payments.confirmPayment(paymentId), {
+        status: "PENDING",
+        note,
+      }),
+    onSuccess: async (_, variables) => {
+      await refreshPaymentQueries(queryClient, variables.paymentId);
+      toast.success("Payment approved successfully");
     },
     onError: () => {
-      toast.error("Failed to confirm payment");
+      toast.error("Failed to approve payment");
     },
   });
 }
@@ -155,15 +189,68 @@ export function useRejectPayment() {
   return useMutation({
     mutationFn: ({ paymentId, note }: { paymentId: string; note: string }) =>
       apiClient.patch(API_ROUTES.payments.rejectPayment(paymentId), { note }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-      queryClient.invalidateQueries({ queryKey: ["payments", "stats"] });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    onSuccess: async (_, variables) => {
+      await refreshPaymentQueries(queryClient, variables.paymentId);
       toast.success("Payment rejected successfully");
     },
     onError: () => {
       toast.error("Failed to reject payment");
+    },
+  });
+}
+
+export function useNotifySellerPaymentCompleted() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      paymentId,
+      vehicleId,
+    }: {
+      paymentId: string;
+      vehicleId?: string | null;
+    }) => {
+      await apiClient.post(API_ROUTES.payments.notifySeller(paymentId));
+
+      if (vehicleId) {
+        try {
+          await apiClient.patch(
+            API_ROUTES.sellerVehicles.updateSellerVehicleById(vehicleId),
+            { status: "SOLD" },
+          );
+          return { vehicleUpdated: true };
+        } catch {
+          return { vehicleUpdated: false };
+        }
+      }
+
+      return { vehicleUpdated: false };
+    },
+    onSuccess: async (result, variables) => {
+      await refreshPaymentQueries(queryClient, variables.paymentId);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+        queryClient.invalidateQueries({ queryKey: ["notifications", "stats"] }),
+        queryClient.invalidateQueries({ queryKey: ["vehicles"] }),
+      ]);
+
+      if (variables.vehicleId && !result.vehicleUpdated) {
+        toast.success(
+          "Seller notified successfully. Vehicle status needs manual review.",
+        );
+        return;
+      }
+
+      toast.success(
+        variables.vehicleId
+          ? "Seller notified and vehicle marked as sold"
+          : "Seller notified successfully",
+      );
+    },
+    onError: (error: AxiosError<{ message?: string }>) => {
+      toast.error(
+        error.response?.data?.message || "Failed to notify seller",
+      );
     },
   });
 }

@@ -8,6 +8,13 @@ type StatusType =
   | 'active'
   | 'inactive'
   | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'not_applied'
+  | 'seller_pending'
+  | 'seller_approved'
+  | 'seller_rejected'
+  | 'seller_not_applied'
   | 'completed'
   | 'cancelled'
   | 'paid'
@@ -18,6 +25,7 @@ type StatusType =
   | 'used'
   | 'certified'
   | 'available'
+  | 'reserved'
   | 'sold'
   | 'car'
   | 'sedan'
@@ -50,6 +58,38 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       variant: 'secondary',
       label: 'Pending',
       className: 'bg-yellow-500 hover:bg-yellow-600 text-white'
+    },
+    approved: {
+      variant: 'default',
+      label: 'Approved',
+      className: 'bg-emerald-600 hover:bg-emerald-500'
+    },
+    rejected: {
+      variant: 'destructive',
+      label: 'Rejected'
+    },
+    not_applied: {
+      variant: 'secondary',
+      label: 'Not Applied'
+    },
+    seller_pending: {
+      variant: 'secondary',
+      label: 'Seller Pending',
+      className: 'bg-amber-500 hover:bg-amber-600 text-white'
+    },
+    seller_approved: {
+      variant: 'default',
+      label: 'Seller Approved',
+      className: 'bg-teal-600 hover:bg-teal-500'
+    },
+    seller_rejected: {
+      variant: 'destructive',
+      label: 'Seller Rejected'
+    },
+    seller_not_applied: {
+      variant: 'secondary',
+      label: 'Not a Seller',
+      className: 'bg-slate-500 hover:bg-slate-600 text-white'
     },
     completed: {
       variant: 'default',
@@ -97,6 +137,11 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       variant: 'default',
       label: 'Available',
       className: 'bg-emerald-600 hover:bg-emerald-500'
+    },
+    reserved: {
+      variant: 'secondary',
+      label: 'Reserved',
+      className: 'bg-amber-500 hover:bg-amber-600 text-white'
     },
     sold: {
       variant: 'destructive',
