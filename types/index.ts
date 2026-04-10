@@ -4,7 +4,7 @@ export type UserRole =
   | "SELLER"
   | "BUYER";
 
-export type OrderStatus = "pending" | "paid" | "cancelled";
+export type OrderStatus = string;
 
 export type CarSource = "api" | "manual";
 
@@ -67,9 +67,11 @@ export interface Car {
 
 export interface Order {
   id: string;
+  requestNumber?: string | null;
   userId: string;
   userName: string;
   userEmail: string;
+  user?: PaymentUserSummary | null;
   carId: string;
   carDetails: {
     make: string;
@@ -78,11 +80,48 @@ export interface Order {
   };
   amount: number;
   status: OrderStatus;
+  rawStatus?: string | null;
   paymentStatus: "pending" | "completed" | "failed" | "refunded";
   notes?: string;
+  customerNotes?: string | null;
+  specialRequests?: string | null;
+  deliveryInstructions?: string | null;
   createdAt: string;
   updatedAt: string;
+  statusChangedAt?: string | null;
+  statusChangedBy?: string | null;
   country: string;
+  destinationCountry?: string | null;
+  destinationState?: string | null;
+  destinationCity?: string | null;
+  destinationAddress?: string | null;
+  destinationPort?: string | null;
+  originPort?: string | null;
+  shippingMethod?: string | null;
+  paymentMethod?: string | null;
+  priority?: string | null;
+  quoteExpiresAt?: string | null;
+  quotedPriceUsd?: number | null;
+  depositAmountUsd?: number | null;
+  totalLandedCostUsd?: number | null;
+  totalLandedCostLocal?: number | null;
+  localCurrency?: string | null;
+  exchangeRate?: number | null;
+  exchangeRateDate?: string | null;
+  estimatedDeliveryDate?: string | null;
+  actualDeliveryDate?: string | null;
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+  cancellationReason?: string | null;
+  refundRequested?: boolean;
+  refundApproved?: boolean;
+  refundAmount?: number | null;
+  previousStatus: string[];
+  tags: string[];
+  paymentBreakdown?: PaymentOrderBreakdown | null;
+  vehicle?: PaymentOrderVehicle | null;
+  vehicleId?: string | null;
+  payments: Payment[];
 }
 
 export interface PaymentUserSummary {

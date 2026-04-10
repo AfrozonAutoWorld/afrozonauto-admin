@@ -41,6 +41,19 @@ interface StatusBadgeProps {
   className?: string;
 }
 
+const formatUnknownStatusLabel = (status: string) => {
+  const normalized = status
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .toLowerCase();
+
+  if (!normalized) {
+    return "Unknown";
+  }
+
+  return normalized.replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   const normalizedStatus = status.toLowerCase() as StatusType;
 
@@ -194,7 +207,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   const { variant, label, className: statusClass } =
     config[normalizedStatus] || {
       variant: 'secondary' as BadgeVariant,
-      label: status.charAt(0).toUpperCase() + status.slice(1).toLowerCase(),
+      label: formatUnknownStatusLabel(status),
     };
 
   return (

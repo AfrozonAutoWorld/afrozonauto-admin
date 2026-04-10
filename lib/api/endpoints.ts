@@ -25,7 +25,7 @@ export const API_ROUTES = {
       `/admin/payments/order/${orderId}`,
     initiateRefund: (paymentId: string) =>
       `/admin/payments/${paymentId}/refund`,
-    confirmPayment: (id: string) => `/admin/payments/${id}/confirm`, // payload is { status: "PENDING", note: string }
+    confirmPayment: (id: string) => `/admin/payments/${id}/confirm`, // payload is { status: "COMPLETED", note: string }
     rejectPayment: (id: string) => `/admin/payments/${id}/reject`, // payload is note: string
     notifySeller: (id: string) => `/admin/payments/${id}/notify-seller`,
   },
@@ -48,20 +48,24 @@ export const API_ROUTES = {
     updateSellerVehicleById: (id: string) => `/seller-vehicles/${id}/status`,
   },
   vehicleDefinitions: {
-    getTrendingVehicles: "/vehicle-definitions/trending",
-    createTrendingVehicle: "/vehicle-definitions/trending",
-    updateTrendingVehicle: (id: string) => `/vehicle-definitions/trending/${id}`,
-    deleteTrendingVehicle: (id: string) => `/vehicle-definitions/trending/${id}`,
-    getRecommendedVehicles: "/vehicle-definitions/recommended",
-    createRecommendedVehicle: "/vehicle-definitions/recommended",
-    updateRecommendedVehicle: (id: string) => `/vehicle-definitions/recommended/${id}`,
-    deleteRecommendedVehicle: (id: string) => `/vehicle-definitions/recommended/${id}`,
+    getTrendingVehicles: "/vehicles/trending-definitions",
+    createTrendingVehicle: "/vehicles/trending-definitions",
+    updateTrendingVehicle: (id: string) =>
+      `/vehicles/trending-definitions/${id}`,
+    deleteTrendingVehicle: (id: string) =>
+      `/vehicles/trending-definitions/${id}`,
+    getRecommendedVehicles: "/vehicles/recommended-definitions",
+    createRecommendedVehicle: "/vehicles/recommended-definitions",
+    updateRecommendedVehicle: (id: string) =>
+      `/vehicles/recommended-definitions/${id}`,
+    deleteRecommendedVehicle: (id: string) =>
+      `/vehicles/recommended-definitions/${id}`,
   },
   vehicleCategories: {
-    getVehicleCategories: "/vehicle-categories",
-    createVehicleCategory: "/vehicle-categories",
-    updateVehicleCategory: (id: string) => `/vehicle-categories/${id}`,
-    deleteVehicleCategory: (id: string) => `/vehicle-categories/${id}`,
+    getVehicleCategories: "/vehicles/admin/categories",
+    createVehicleCategory: "/vehicles/admin/categories",
+    updateVehicleCategory: (id: string) => `/vehicles/admin/categories/${id}`,
+    deleteVehicleCategory: (id: string) => `/vehicles/admin/categories/${id}`,
   },
   testimonials: {
     approveTestimonial: "/testimonial", //patch

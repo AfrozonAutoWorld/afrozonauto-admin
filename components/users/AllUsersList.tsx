@@ -39,17 +39,16 @@ export function UsersPage() {
   const canManageSellerReview =
     session?.user.role === 'SUPER_ADMIN' ||
     session?.user.role === 'OPERATIONS_ADMIN';
+  const limit = 10;
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [sellerConfirmOpen, setSellerConfirmOpen] = useState(false);
   const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const limit = 10;
   const { data, isLoading } = useUsers({
     page,
     limit,
-    //search: searchQuery.trim() || undefined,
   });
   const [addUserModal, setAddUserModal] = useState(false);
 
@@ -115,7 +114,7 @@ export function UsersPage() {
       <div>
         <Header
           title="Users"
-
+          description="Manage all platform users."
         />
 
         <div className="p-6 space-y-6">

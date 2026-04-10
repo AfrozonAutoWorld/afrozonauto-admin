@@ -170,7 +170,7 @@ export function useConfirmPayment() {
   return useMutation({
     mutationFn: ({ paymentId, note }: { paymentId: string; note: string }) =>
       apiClient.patch(API_ROUTES.payments.confirmPayment(paymentId), {
-        status: "PENDING",
+        status: "COMPLETED",
         note,
       }),
     onSuccess: async (_, variables) => {

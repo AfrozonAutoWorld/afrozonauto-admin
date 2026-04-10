@@ -118,7 +118,7 @@ const mapPaymentOrder = (
 
   return {
     id: order?.id ?? fallbackOrderId ?? "",
-    vehicleId: order?.vehicleId ?? null,
+    vehicleId: order?.vehicleId ?? order?.vehicle?.id ?? null,
     requestNumber: order?.requestNumber ?? null,
     status: order?.status ?? null,
     previousStatus: order?.previousStatus ?? [],
@@ -127,7 +127,7 @@ const mapPaymentOrder = (
     paymentMethod: order?.paymentMethod ?? null,
     createdAt: order?.createdAt ?? undefined,
     updatedAt: order?.updatedAt ?? order?.createdAt ?? undefined,
-    vehicle: mapPaymentOrderVehicle(order?.vehicleSnapshot),
+    vehicle: mapPaymentOrderVehicle(order?.vehicleSnapshot ?? order?.vehicle),
     paymentBreakdown: order?.paymentBreakdown
       ? {
           totalUsd: order.paymentBreakdown.totalUsd ?? null,
@@ -139,22 +139,6 @@ const mapPaymentOrder = (
   };
 };
 
-const mapOrderStatus = (status?: string): Order["status"] => {
-  if (!status) return "pending";
-  const normalized = status.toLowerCase();
-  if (normalized.includes("cancel")) return "cancelled";
-  if (normalized.includes("paid") || normalized.includes("complete")) return "paid";
-  return "pending";
-};
-
-const mapPaymentStatus = (status?: string): Order["paymentStatus"] => {
-  if (!status) return "pending";
-  const normalized = status.toLowerCase();
-  if (normalized.includes("refund")) return "refunded";
-  if (normalized.includes("paid") || normalized.includes("complete")) return "completed";
-  return "pending";
-};
-
 const mapPaymentStatusValue = (status?: string): Payment["status"] => {
   if (!status) return "pending";
   const normalized = status.toLowerCase();
@@ -164,46 +148,46 @@ const mapPaymentStatusValue = (status?: string): Payment["status"] => {
   return "pending";
 };
 
-export const mapApiOrderToOrder = (order: ApiOrder): Order => {
-  const vehicle = order.vehicleSnapshot ?? {};
-  const amount =
-    order.paymentBreakdown?.totalUsd ??
-    order.totalLandedCostUsd ??
-    order.quotedPriceUsd ??
-    order.depositAmountUsd ??
-    0;
+const mapOrderPaymentStatus = (
+  payments?: ApiPayment[] | null,
+  fallbackStatus?: string,
+): Order["paymentStatus"] => {
+  const normalizedPaymentStatuses = (payments ?? [])
+    .map((payment) => payment.status?.toLowerCase() ?? "")
+    .filter(Boolean);
 
-  return {
-    id: order.id,
-    userId: order.userId ?? order.user?.id ?? "",
-    userName: formatOrderUserName(order.user ?? undefined),
-    userEmail: order.user?.email ?? "",
-    carId:
-      order.vehicleId ??
-      order.externalVehicleId ??
-      vehicle.id ??
-      vehicle.apiListingId ??
-      vehicle.vin ??
-      "",
-    carDetails: {
-      make: vehicle.make ?? "Unknown",
-      model: vehicle.model ?? "Unknown",
-      year: vehicle.year ?? 0,
-    },
-    amount,
-    status: mapOrderStatus(order.status),
-    paymentStatus: mapPaymentStatus(order.status),
-    notes:
-      order.customerNotes ??
-      order.specialRequests ??
-      order.deliveryInstructions ??
-      undefined,
-    createdAt: order.createdAt ?? new Date(0).toISOString(),
-    updatedAt: order.updatedAt ?? order.createdAt ?? new Date(0).toISOString(),
-    country: order.destinationCountry ?? "",
-  };
+  if (normalizedPaymentStatuses.some((status) => status.includes("refund"))) {
+    return "refunded";
+  }
+
+  if (
+    normalizedPaymentStatuses.some(
+      (status) =>
+        status.includes("complete") ||
+        status.includes("paid"),
+    )
+  ) {
+    return "completed";
+  }
+
+  if (
+    normalizedPaymentStatuses.some(
+      (status) =>
+        status.includes("fail") ||
+        status.includes("cancel"),
+    )
+  ) {
+    return "failed";
+  }
+
+  const fallback = fallbackStatus?.toLowerCase() ?? "";
+  if (fallback.includes("refund")) return "refunded";
+  if (fallback.includes("fail")) return "failed";
+  if (fallback.includes("paid") || fallback.includes("complete")) {
+    return "completed";
+  }
+  return "pending";
 };
-
 
 export const mapApiPaymentToPayment = (payment: ApiPayment): Payment => {
   const amount =
@@ -259,5 +243,100 @@ export const mapApiPaymentToPayment = (payment: ApiPayment): Payment => {
         }
       : null,
     order: mapPaymentOrder(payment.order, payment.orderId),
+  };
+};
+
+export const mapApiOrderToOrder = (order: ApiOrder): Order => {
+  const vehicle = order.vehicleSnapshot ?? order.vehicle ?? {};
+  const amount =
+    order.paymentBreakdown?.totalUsd ??
+    order.totalLandedCostUsd ??
+    order.quotedPriceUsd ??
+    order.depositAmountUsd ??
+    0;
+
+  return {
+    id: order.id,
+    requestNumber: order.requestNumber ?? null,
+    userId: order.userId ?? order.user?.id ?? "",
+    userName: formatOrderUserName(order.user ?? undefined),
+    userEmail: order.user?.email ?? "",
+    user: order.user
+      ? {
+          id: order.user.id ?? order.userId ?? "",
+          email: order.user.email ?? "",
+          name: formatOrderUserName(order.user),
+          firstName: order.user.profile?.firstName ?? null,
+          lastName: order.user.profile?.lastName ?? null,
+        }
+      : null,
+    carId:
+      order.vehicleId ??
+      order.vehicle?.id ??
+      order.externalVehicleId ??
+      vehicle.id ??
+      vehicle.apiListingId ??
+      vehicle.vin ??
+      "",
+    carDetails: {
+      make: vehicle.make ?? "Unknown",
+      model: vehicle.model ?? "Unknown",
+      year: vehicle.year ?? 0,
+    },
+    amount,
+    status: order.status ?? "PENDING",
+    rawStatus: order.status ?? null,
+    paymentStatus: mapOrderPaymentStatus(order.payments, order.status),
+    notes:
+      order.customerNotes ??
+      order.specialRequests ??
+      order.deliveryInstructions ??
+      undefined,
+    customerNotes: order.customerNotes ?? null,
+    specialRequests: order.specialRequests ?? null,
+    deliveryInstructions: order.deliveryInstructions ?? null,
+    createdAt: order.createdAt ?? new Date(0).toISOString(),
+    updatedAt: order.updatedAt ?? order.createdAt ?? new Date(0).toISOString(),
+    statusChangedAt: order.statusChangedAt ?? null,
+    statusChangedBy: order.statusChangedBy ?? null,
+    country: order.destinationCountry ?? "",
+    destinationCountry: order.destinationCountry ?? null,
+    destinationState: order.destinationState ?? null,
+    destinationCity: order.destinationCity ?? null,
+    destinationAddress: order.destinationAddress ?? null,
+    destinationPort: order.destinationPort ?? null,
+    originPort: order.originPort ?? null,
+    shippingMethod: order.shippingMethod ?? null,
+    paymentMethod: order.paymentMethod ?? null,
+    priority: order.priority ?? null,
+    quoteExpiresAt: order.quoteExpiresAt ?? null,
+    quotedPriceUsd: order.quotedPriceUsd ?? null,
+    depositAmountUsd: order.depositAmountUsd ?? null,
+    totalLandedCostUsd: order.totalLandedCostUsd ?? null,
+    totalLandedCostLocal: order.totalLandedCostLocal ?? null,
+    localCurrency: order.localCurrency ?? null,
+    exchangeRate: order.exchangeRate ?? null,
+    exchangeRateDate: order.exchangeRateDate ?? null,
+    estimatedDeliveryDate: order.estimatedDeliveryDate ?? null,
+    actualDeliveryDate: order.actualDeliveryDate ?? null,
+    cancelledAt: order.cancelledAt ?? null,
+    cancelledBy: order.cancelledBy ?? null,
+    cancellationReason: order.cancellationReason ?? null,
+    refundRequested: order.refundRequested ?? false,
+    refundApproved: order.refundApproved ?? false,
+    refundAmount: order.refundAmount ?? null,
+    previousStatus: order.previousStatus ?? [],
+    tags: order.tags ?? [],
+    paymentBreakdown: order.paymentBreakdown
+      ? {
+          totalUsd: order.paymentBreakdown.totalUsd ?? null,
+          totalUsedDeposit: order.paymentBreakdown.totalUsedDeposit ?? null,
+          shippingMethod: order.paymentBreakdown.shippingMethod ?? null,
+          breakdown: order.paymentBreakdown.breakdown ?? null,
+        }
+      : null,
+    vehicle: mapPaymentOrderVehicle(order.vehicleSnapshot ?? order.vehicle),
+    vehicleId: order.vehicleId ?? order.vehicle?.id ?? null,
+    payments: (order.payments ?? []).map(mapApiPaymentToPayment),
   };
 };

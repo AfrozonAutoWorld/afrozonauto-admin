@@ -21,6 +21,7 @@ export default function PendingOrderDetailPage({ params }: { params: Promise<{ i
   const cancelOrder = useCancelOrder();
   const [note, setNote] = useState('');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const isCancelled = (order?.status ?? '').toUpperCase() === 'CANCELLED';
 
   const handleAddNote = () => {
     const trimmedNote = note.trim();
@@ -193,9 +194,9 @@ export default function PendingOrderDetailPage({ params }: { params: Promise<{ i
                   variant="bordered"
                   icon={Ban}
                   onClick={() => setShowCancelConfirm(true)}
-                  isDisabled={order.status === 'cancelled'}
+                  isDisabled={isCancelled}
                 >
-                  {order.status === 'cancelled' ? 'Order Cancelled' : 'Cancel Order'}
+                  {isCancelled ? 'Order Cancelled' : 'Cancel Order'}
                 </CustomBtn>
               </div>
             </CardContent>

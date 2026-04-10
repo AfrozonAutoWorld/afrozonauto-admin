@@ -17,7 +17,6 @@ import { AxiosError } from "axios";
 type UsersListParams = PaginationParams & {
   search?: string;
   status?: string;
-  role?: string;
 };
 
 type CreateUserPayload = {

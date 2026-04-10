@@ -87,15 +87,27 @@ export type ApiOrder = {
   previousStatus?: string[] | null;
   createdAt?: string;
   updatedAt?: string;
+  statusChangedAt?: string | null;
+  statusChangedBy?: string | null;
   userId?: string;
   user?: ApiOrderUser | null;
   vehicleId?: string | null;
+  vehicle?: ApiOrderVehicleSnapshot | null;
+  vehicleSource?: string | null;
   externalVehicleId?: string | null;
+  externalProvider?: string | null;
   vehicleSnapshot?: ApiOrderVehicleSnapshot | null;
   destinationCountry?: string | null;
+  destinationState?: string | null;
+  destinationCity?: string | null;
+  destinationAddress?: string | null;
+  destinationPort?: string | null;
+  originPort?: string | null;
   customerNotes?: string | null;
   specialRequests?: string | null;
   deliveryInstructions?: string | null;
+  estimatedDeliveryDate?: string | null;
+  actualDeliveryDate?: string | null;
   paymentBreakdown?: {
     totalUsd?: number;
     totalUsedDeposit?: number | null;
@@ -105,8 +117,22 @@ export type ApiOrder = {
   quotedPriceUsd?: number | null;
   depositAmountUsd?: number | null;
   totalLandedCostUsd?: number | null;
+  totalLandedCostLocal?: number | null;
+  localCurrency?: string | null;
+  exchangeRate?: number | null;
+  exchangeRateDate?: string | null;
+  quoteExpiresAt?: string | null;
   shippingMethod?: string | null;
   paymentMethod?: string | null;
+  priority?: string | null;
+  refundRequested?: boolean | null;
+  refundApproved?: boolean | null;
+  refundAmount?: number | null;
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+  cancellationReason?: string | null;
+  tags?: string[] | null;
+  payments?: ApiPayment[] | null;
 };
 
 export type ApiPayment = {

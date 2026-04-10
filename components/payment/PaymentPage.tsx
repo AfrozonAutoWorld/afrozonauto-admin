@@ -238,13 +238,13 @@ export default function PaymentsPage() {
                 <label htmlFor="payment-status" className="text-sm font-medium text-slate-700">
                   Status
                 </label>
-              <Select
-                value={statusFilter}
-                onValueChange={(value) => {
-                  setStatusFilter(value);
-                  setPage(1);
-                }}
-              >
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value) => {
+                    setStatusFilter(value);
+                    setPage(1);
+                  }}
+                >
                   <SelectTrigger
                     id="payment-status"
                     className="h-11 w-full rounded-lg border-slate-200 bg-white shadow-none focus-visible:ring-2 focus-visible:ring-emerald-500/20"
@@ -465,7 +465,7 @@ export default function PaymentsPage() {
         description={
           reviewPayment
             ? `Add an internal note for transaction ${reviewPayment.transactionId}.`
-            : 'Add an internal note for this payment action.'
+            : ''
         }
         showFooter
         onConfirm={submitReviewAction}
@@ -473,11 +473,9 @@ export default function PaymentsPage() {
         isLoading={isReviewSubmitting}
       >
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            A note is required before this payment can be {reviewAction === 'confirm' ? 'approved' : 'rejected'}.
-          </p>
+
           <TextAreaField
-            label="Note"
+            //label="Note"
             htmlFor="payment-review-note"
             id="payment-review-note"
             placeholder={
@@ -489,7 +487,7 @@ export default function PaymentsPage() {
             onChange={setReviewNote}
             isInvalid={!reviewNote.trim() && isReviewSubmitting}
             errorMessage="Note is required"
-            required
+            //required
             disableAutosize
             fixedHeightClassName="h-36"
           />

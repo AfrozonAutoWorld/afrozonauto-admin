@@ -7,8 +7,17 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ConfirmModal } from '@/components/shared/ConfirmModal';
 import { useOrders } from '@/lib/hooks/useOrders';
-import { ArrowLeft, Search, ShoppingCart } from 'lucide-react';
+import { useNotifySellerPaymentCompleted } from '@/lib/hooks/usePayment';
+import {
+  ArrowLeft,
+  BellRing,
+  Eye,
+  MoreVertical,
+  Search,
+  ShoppingCart,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import {
   Table,
@@ -26,8 +35,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@nextui-org/react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { CustomBtn } from '@/components/shared';
+import type { Order } from '@/types';
 
 const orderStatuses = [
   'PENDING_QUOTE',
@@ -71,6 +88,7 @@ const filterLabelClassName = 'text-sm font-medium text-slate-700';
 
 export default function AllOrdersPage() {
   const router = useRouter();
+  const notifySeller = useNotifySellerPaymentCompleted();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -80,6 +98,12 @@ export default function AllOrdersPage() {
   const [destinationCountry, setDestinationCountry] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [notifyTarget, setNotifyTarget] = useState<{
+    paymentId: string;
+    vehicleId?: string | null;
+    requestNumber?: string | null;
+    transactionId: string;
+  } | null>(null);
   const limit = 10;
 
   const filters = useMemo(() => ({
@@ -120,6 +144,37 @@ export default function AllOrdersPage() {
     setStartDate('');
     setEndDate('');
     setPage(1);
+  };
+
+  const getCompletedPayment = (order: Order) =>
+    order.payments.find((payment) => payment.status === 'completed');
+
+  const handleNotifySeller = (order: Order) => {
+    const completedPayment = getCompletedPayment(order);
+    if (!completedPayment) return;
+
+    setNotifyTarget({
+      paymentId: completedPayment.id,
+      vehicleId: order.vehicleId ?? completedPayment.order?.vehicleId ?? null,
+      requestNumber: order.requestNumber ?? order.id,
+      transactionId: completedPayment.transactionId,
+    });
+  };
+
+  const confirmNotifySeller = () => {
+    if (!notifyTarget) return;
+
+    notifySeller.mutate(
+      {
+        paymentId: notifyTarget.paymentId,
+        vehicleId: notifyTarget.vehicleId,
+      },
+      {
+        onSuccess: () => {
+          setNotifyTarget(null);
+        },
+      },
+    );
   };
 
 
@@ -316,57 +371,92 @@ export default function AllOrdersPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Order ID</TableHead>
+                      <TableHead>Order</TableHead>
                       <TableHead>Customer</TableHead>
                       <TableHead>Car</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Payment</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead className="w-20"></TableHead>
+                      <TableHead className="w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders.map((order) => (
-                      <TableRow
-                        key={order.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => router.push(`/admin/orders/${order.id}`)}
-                      >
-                        <TableCell className="font-mono text-sm">
-                          {order.id}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{order.userName}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {order.userEmail}
+                    {orders.map((order) => {
+                      const completedPayment = getCompletedPayment(order);
+
+                      return (
+                        <TableRow
+                          key={order.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => router.push(`/admin/orders/${order.id}`)}
+                        >
+                          <TableCell className="font-mono text-sm">
+                            <div className="space-y-1">
+                              <div>{order.requestNumber || order.id}</div>
+                              <div className="text-xs text-muted-foreground">{order.id}</div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {order.carDetails.make} {order.carDetails.model} ({order.carDetails.year})
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          ${order.amount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={order.status} />
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {format(new Date(order.createdAt), 'MMM d, yyyy')}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onPress={() => router.push(`/admin/orders/${order.id}`)}
-                            className="h-8 w-8 p-0"
-                          >
-                            View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{order.userName}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {order.userEmail}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {order.carDetails.make} {order.carDetails.model} ({order.carDetails.year})
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            ${order.amount.toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={order.status} />
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={completedPayment ? 'completed' : order.paymentStatus} />
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {format(new Date(order.createdAt), 'MMM d, yyyy')}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                  }}
+                                  className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 hover:bg-slate-50"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => router.push(`/admin/orders/${order.id}`)}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Detail
+                                </DropdownMenuItem>
+                                {completedPayment && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleNotifySeller(order)}>
+                                      <BellRing className="mr-2 h-4 w-4" />
+                                      Notify Seller
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -385,24 +475,22 @@ export default function AllOrdersPage() {
                 Page {page} of {totalPages} • Total {data?.meta.total ?? orders.length}
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onPress={() => setPage((prev) => Math.max(1, prev - 1))}
-                  isDisabled={page <= 1}
-                  className="cursor-pointer"
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={page <= 1}
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50"
                 >
                   Previous
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onPress={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                  isDisabled={page >= totalPages}
-                  className='"cursor-pointer'
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={page >= totalPages}
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50"
                 >
                   Next
-                </Button>
+                </button>
               </div>
             </CardFooter>
           )}
@@ -410,6 +498,25 @@ export default function AllOrdersPage() {
         </Card>
 
       </div>
+
+      <ConfirmModal
+        open={!!notifyTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setNotifyTarget(null);
+          }
+        }}
+        title="Notify Seller"
+        description="Send the sold notification from the completed payment on this order."
+        message={
+          notifyTarget
+            ? `Notify the seller for order ${notifyTarget.requestNumber ?? ''} using transaction ${notifyTarget.transactionId}?`
+            : ''
+        }
+        onConfirm={confirmNotifySeller}
+        isLoading={notifySeller.isPending}
+        confirmText="Notify Seller"
+      />
     </div>
   );
 }

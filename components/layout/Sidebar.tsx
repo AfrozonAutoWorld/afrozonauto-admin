@@ -201,7 +201,7 @@ function SidebarContent({
               {hasChildren && isExpanded && (
                 <div className="ml-7 mt-1 space-y-1">
                   {item.children!.map((child) => {
-                    const isChildActive =
+                    const childActive =
                       pathname === child.href ||
                       pathname.startsWith(child.href + '/');
 
@@ -212,7 +212,7 @@ function SidebarContent({
                         onClick={onLinkClick}
                         className={cn(
                           'block rounded-md px-3 py-1.5 text-sm transition-colors cursor-pointer',
-                          isChildActive
+                          childActive
                             ? 'bg-emerald-100 text-emerald-700'
                             : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                         )}
