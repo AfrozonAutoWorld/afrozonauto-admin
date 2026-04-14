@@ -1,20 +1,45 @@
 'use client';
 
-import { use } from 'react';
+import { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CustomBtn } from '@/components/shared/CustomBtn';
+import { ConfirmModal } from '@/components/shared/ConfirmModal';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
-import { useOrder } from '@/lib/hooks/useOrders';
-import { ArrowLeft, User } from 'lucide-react';
+import { useAddOrderNote, useCancelOrder, useOrder } from '@/lib/hooks/useOrders';
+import { ArrowLeft, Ban, FileText, User } from 'lucide-react';
 import { format } from 'date-fns';
+import { TextAreaField } from '@/components/Form';
 
 export default function PendingOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
   const { data: order, isLoading } = useOrder(resolvedParams.id);
+  const addOrderNote = useAddOrderNote();
+  const cancelOrder = useCancelOrder();
+  const [note, setNote] = useState('');
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const isCancelled = (order?.status ?? '').toUpperCase() === 'CANCELLED';
+
+  const handleAddNote = () => {
+    const trimmedNote = note.trim();
+    if (!trimmedNote) return;
+
+    addOrderNote.mutate(
+      { id: resolvedParams.id, note: trimmedNote },
+      {
+        onSuccess: () => setNote(''),
+      },
+    );
+  };
+
+  const handleCancelOrder = () => {
+    cancelOrder.mutate(resolvedParams.id, {
+      onSuccess: () => setShowCancelConfirm(false),
+    });
+  };
 
   if (isLoading) {
     return (
@@ -50,7 +75,8 @@ export default function PendingOrderDetailPage({ params }: { params: Promise<{ i
         <CustomBtn
           variant="ghost"
           icon={ArrowLeft}
-          onClick={() => router.push('/admin/orders/pending')}
+          onClick={() => router.back()}
+          className='cursor-pointer'
         >
           Back to Pending Orders
         </CustomBtn>
@@ -102,7 +128,7 @@ export default function PendingOrderDetailPage({ params }: { params: Promise<{ i
               <CustomBtn
                 variant="bordered"
                 icon={User}
-                onClick={() => router.push(`/users/${order.userId}`)}
+                onClick={() => router.push(`/admin/users/${order.userId}`)}
                 className="w-full"
               >
                 View Customer Profile
@@ -138,8 +164,57 @@ export default function PendingOrderDetailPage({ params }: { params: Promise<{ i
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <TextAreaField
+                label="Internal Note"
+                htmlFor="internal-note"
+                id="internal-note"
+                placeholder="Add an internal note for this order"
+                value={note}
+                onChange={setNote}
+                isInvalid={false}
+                errorMessage=""
+                rows={4}
+              />
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <CustomBtn
+                  icon={FileText}
+                  onClick={handleAddNote}
+                  isLoading={addOrderNote.isPending}
+                  isDisabled={!note.trim()}
+                >
+                  Save Note
+                </CustomBtn>
+                <CustomBtn
+                  variant="bordered"
+                  icon={Ban}
+                  onClick={() => setShowCancelConfirm(true)}
+                  isDisabled={isCancelled}
+                >
+                  {isCancelled ? 'Order Cancelled' : 'Cancel Order'}
+                </CustomBtn>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      <ConfirmModal
+        open={showCancelConfirm}
+        onOpenChange={setShowCancelConfirm}
+        title="Cancel Order"
+        description="This will cancel the pending order"
+        message={`Are you sure you want to cancel order ${order.id}?`}
+        onConfirm={handleCancelOrder}
+        isLoading={cancelOrder.isPending}
+        confirmText="Cancel Order"
+        variant="warning"
+      />
     </div>
   );
 }

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Header } from '@/components/layout/Header';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { CustomBtn, StatusBadge, LoadingSpinner, EmptyState, ConfirmModal } from '@/components/shared'
 import {
   Table,
@@ -21,8 +21,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useUsers, useToggleUserStatus } from '@/lib/hooks/useUsers';
-import { Search, MoreVertical, User, Eye, Users, UserPlus } from 'lucide-react';
+import {
+  useApproveSellerAccount,
+  useUsers,
+  useToggleUserStatus,
+} from '@/lib/hooks/useUsers';
+import { MoreVertical, User, Eye, Users, UserPlus, BadgeCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { AddUserModal } from '@/components/users/AddUserModal';
 import { useRouter } from 'next/navigation';
@@ -30,24 +34,48 @@ import { useRouter } from 'next/navigation';
 
 export function UsersPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const canManageUserStatus = session?.user.role === 'SUPER_ADMIN';
+  const canManageSellerReview =
+    session?.user.role === 'SUPER_ADMIN' ||
+    session?.user.role === 'OPERATIONS_ADMIN';
+  const limit = 10;
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const { data: users, isLoading } = useUsers();
+  const [sellerConfirmOpen, setSellerConfirmOpen] = useState(false);
+  const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const { data, isLoading } = useUsers({
+    page,
+    limit,
+  });
   const [addUserModal, setAddUserModal] = useState(false);
 
   const toggleStatus = useToggleUserStatus();
+  const approveSellerAccount = useApproveSellerAccount();
 
-  const filteredUsers = users?.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.country.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const users = data?.items || [];
+  const meta = data?.meta;
+  const totalPages = meta?.pages ?? 1;
+
+  const getRawSellerStatusForUser = (user: (typeof users)[number]) =>
+    (
+      user.sellerStatus ??
+      (user.role === 'SELLER' ? 'pending' : 'not_applied')
+    ).toLowerCase();
+
+  const getSellerStatusForUser = (user: (typeof users)[number]) =>
+    `seller_${getRawSellerStatusForUser(user)}`;
 
   const handleToggleStatus = (userId: string) => {
     setSelectedUserId(userId);
     setConfirmOpen(true);
+  };
+
+  const handleConfirmSeller = (userId: string) => {
+    setSelectedSellerId(userId);
+    setSellerConfirmOpen(true);
   };
 
   const confirmToggleStatus = () => {
@@ -58,24 +86,45 @@ export function UsersPage() {
     }
   };
 
+  const confirmSellerApproval = () => {
+    if (!selectedSellerId) return;
+
+    const selectedSeller = users.find((user) => user.id === selectedSellerId);
+    if (!selectedSeller) return;
+
+    approveSellerAccount.mutate(
+      {
+        userId: selectedSeller.id,
+        profileId: selectedSeller.profileId,
+      },
+      {
+        onSuccess: () => {
+          setSellerConfirmOpen(false);
+          setSelectedSellerId(null);
+        },
+      },
+    );
+  };
+
   const selectedUser = users?.find(u => u.id === selectedUserId);
+  const selectedSeller = users?.find((user) => user.id === selectedSellerId);
 
   return (
     <>
       <div>
         <Header
           title="Users"
-
+          description="Manage all platform users."
         />
 
         <div className="p-6 space-y-6">
 
           {/* Summary Stats */}
-          {users && (
+          {users.length > 0 && (
             <div className="grid gap-4 md:grid-cols-3">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-2xl font-bold">{users.length}</div>
+                  <div className="text-2xl font-bold">{meta?.total ?? users.length}</div>
                   <p className="text-sm text-muted-foreground">Total Users</p>
                 </CardContent>
               </Card>
@@ -90,7 +139,7 @@ export function UsersPage() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold">
-                    {users.filter(u => u.role === 'super_admin').length}
+                    {users.filter(u => u.role === 'SUPER_ADMIN').length}
                   </div>
                   <p className="text-sm text-muted-foreground">Super Admins</p>
                 </CardContent>
@@ -99,37 +148,24 @@ export function UsersPage() {
           )}
 
           {/* Search Bar */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search users by name, email, or country..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                <CustomBtn
-                  icon={UserPlus}
-                  onPress={() => setAddUserModal(true)}
-                  type="submit"
-                  isLoading={isLoading}
-                  className="bg-emerald-600 text-white rounded-lg cursor-pointer px-4 font-semibold text-lg"
-                >
-                  Add User
-                </CustomBtn>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-end gap-4 pt-6">
+            <CustomBtn
+              icon={UserPlus}
+              onPress={() => setAddUserModal(true)}
+              type="submit"
+              isLoading={isLoading}
+              className="bg-emerald-600 text-white rounded-lg cursor-pointer px-4 font-semibold text-lg"
+            >
+              Add User
+            </CustomBtn>
+          </div>
 
           {/* Users Table */}
           <Card>
             <CardContent className="p-0">
               {isLoading ? (
                 <LoadingSpinner text="Loading users..." />
-              ) : filteredUsers && filteredUsers.length > 0 ? (
+              ) : users.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -137,6 +173,7 @@ export function UsersPage() {
                       <TableHead>Contact</TableHead>
                       <TableHead>Country</TableHead>
                       <TableHead>Role</TableHead>
+                      <TableHead>Seller Review</TableHead>
                       <TableHead>Orders</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Joined</TableHead>
@@ -144,7 +181,7 @@ export function UsersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => (
+                    {users.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -169,7 +206,10 @@ export function UsersPage() {
                         </TableCell>
                         <TableCell>{user.country}</TableCell>
                         <TableCell>
-                          <StatusBadge status={user.status} />
+                          <StatusBadge status={user.role} />
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={getSellerStatusForUser(user)} />
                         </TableCell>
                         <TableCell>
                           <span className="font-medium">{user.totalOrders}</span>
@@ -197,16 +237,30 @@ export function UsersPage() {
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Profile
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => router.push(`/admin/users/${user.id}/orders`)}>
-                                <User className="mr-2 h-4 w-4" />
-                                View Orders
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleToggleStatus(user.id)}
-                              >
-                                {user.status === 'active' ? 'Deactivate' : 'Activate'} User
-                              </DropdownMenuItem>
+                              {user.role === 'BUYER' && (
+                                <DropdownMenuItem onClick={() => router.push(`/admin/users/${user.id}/orders`)}>
+                                  <User className="mr-2 h-4 w-4" />
+                                  View Orders
+                                </DropdownMenuItem>
+                              )}
+                              {canManageSellerReview &&
+                                user.role === 'SELLER' &&
+                                getRawSellerStatusForUser(user) !== 'approved' && (
+                                  <DropdownMenuItem onClick={() => handleConfirmSeller(user.id)}>
+                                    <BadgeCheck className="mr-2 h-4 w-4" />
+                                    Confirm Seller
+                                  </DropdownMenuItem>
+                                )}
+                              {canManageUserStatus && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleToggleStatus(user.id)}
+                                  >
+                                    {user.status === 'active' ? 'Deactivate' : 'Activate'} User
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -218,16 +272,44 @@ export function UsersPage() {
                 <EmptyState
                   icon={Users}
                   title="No users found"
-                  description={searchQuery ? "Try adjusting your search" : "Start by adding your first user"}
+                  description="Start by adding your first user"
                   action={{
                     label: "Add User",
-                    onClick: () => console.log('Add user'),
+                    onClick: () => setAddUserModal(true),
                     icon: UserPlus,
                   }}
                 />
               )}
             </CardContent>
+
+            {totalPages > 1 && (
+              <CardFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-2">
+                <div className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages} • Total {meta?.total ?? users.length}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    disabled={page <= 1}
+                    className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 cursor-pointer hover:bg-gray-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={page >= totalPages}
+                    className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 cursor-pointer hover:bg-gray-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </CardFooter>
+            )}
+
           </Card>
+
 
 
         </div>
@@ -243,16 +325,39 @@ export function UsersPage() {
 
 
       {/* Confirm Modal */}
+      {canManageUserStatus && (
+        <ConfirmModal
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={`${selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'} User`}
+          description="This will change the user's access to the platform"
+          message={`Are you sure you want to ${selectedUser?.status === 'active' ? 'deactivate' : 'activate'} ${selectedUser?.name}?`}
+          onConfirm={confirmToggleStatus}
+          isLoading={toggleStatus.isPending}
+          variant={selectedUser?.status === 'active' ? 'warning' : 'default'}
+          confirmText={selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'}
+        />
+      )}
+
       <ConfirmModal
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title={`${selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'} User`}
-        description="This will change the user's access to the platform"
-        message={`Are you sure you want to ${selectedUser?.status === 'active' ? 'deactivate' : 'activate'} ${selectedUser?.name}?`}
-        onConfirm={confirmToggleStatus}
-        isLoading={toggleStatus.isPending}
-        variant={selectedUser?.status === 'active' ? 'warning' : 'default'}
-        confirmText={selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'}
+        open={sellerConfirmOpen}
+        onOpenChange={(open) => {
+          setSellerConfirmOpen(open);
+
+          if (!open) {
+            setSelectedSellerId(null);
+          }
+        }}
+        title="Confirm Seller"
+        description="This will verify the seller profile using its ID only."
+        message={
+          selectedSeller
+            ? `Are you sure you want to confirm ${selectedSeller.name} as a seller?`
+            : 'Are you sure you want to confirm this seller?'
+        }
+        onConfirm={confirmSellerApproval}
+        isLoading={approveSellerAccount.isPending}
+        confirmText="Confirm Seller"
       />
 
     </>

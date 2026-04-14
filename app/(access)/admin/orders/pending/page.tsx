@@ -1,13 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { useOrders } from '@/lib/hooks/useOrders';
-import { ShoppingCart } from 'lucide-react';
+import { usePendingOrders } from '@/lib/hooks/useOrders';
+import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   Table,
@@ -18,13 +19,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@nextui-org/react';
+import { CustomBtn } from '@/components/shared';
 
 
 export default function PendingOrdersPage() {
   const router = useRouter();
-  const { data: orders, isLoading } = useOrders();
+  const [page, setPage] = useState(1);
+  const limit = 5;
+  const { data, isLoading } = usePendingOrders({ page, limit });
 
-  const pendingOrders = orders?.filter(order => order.status === 'pending') || [];
+  const pendingOrders = data?.items || [];
+  const totalPages = data?.meta.pages ?? 1;
 
   return (
     <div>
@@ -34,12 +39,14 @@ export default function PendingOrdersPage() {
       />
 
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <Button
+        <CustomBtn
           variant="ghost"
-          onPress={() => router.push('/admin/orders')}
+          icon={ArrowLeft}
+          onClick={() => router.back()}
+          className='cursor-pointer'
         >
           Back
-        </Button>
+        </CustomBtn>
 
         <Card>
           <CardContent className="p-0">
@@ -112,7 +119,38 @@ export default function PendingOrdersPage() {
               />
             )}
           </CardContent>
+
+
+          {totalPages > 1 && (
+            <CardFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-muted-foreground">
+                Page {page} of {totalPages} • Total {data?.meta.total ?? pendingOrders.length}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => setPage((prev) => Math.max(1, prev - 1))}
+                  isDisabled={page <= 1}
+                  className='cursor-pointer'
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  isDisabled={page >= totalPages}
+                  className='cursor-pointer'
+                >
+                  Next
+                </Button>
+              </div>
+            </CardFooter>
+          )}
+
         </Card>
+
       </div>
     </div>
   );

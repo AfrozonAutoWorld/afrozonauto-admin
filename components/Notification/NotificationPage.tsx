@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import { Header } from '@/components/layout/Header';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { CustomBtn } from '@/components/shared/CustomBtn';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import {
   Table,
   TableBody,
@@ -19,30 +22,36 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Bell, Mail, ShoppingCart, DollarSign, CheckCircle, Clock } from 'lucide-react';
+import { Mail, ShoppingCart, CheckCircle, Clock, Check, CheckCheck, Bell } from 'lucide-react';
 import { format } from 'date-fns';
-import { mockNotifications } from '@/lib/mock/data';
+import {
+  useMarkAllNotificationsAsRead,
+  useMarkNotificationAsRead,
+  useNotifications,
+  useNotificationStats,
+} from '@/lib/hooks';
 
 export default function NotificationsPage() {
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [page, setPage] = useState(1);
+  const limit = 5;
 
-  const filteredNotifications = mockNotifications.filter(notif => {
-    const matchesType = typeFilter === 'all' || notif.type === typeFilter;
-    const matchesStatus = statusFilter === 'all' || notif.status === statusFilter;
-    return matchesType && matchesStatus;
+  const { data, isLoading } = useNotifications({
+    page,
+    limit,
+    type: typeFilter !== 'all' ? typeFilter : undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
   });
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'order_placed':
-        return <ShoppingCart className="h-4 w-4 text-purple-600" />;
-      case 'payment_confirmed':
-        return <DollarSign className="h-4 w-4 text-emerald-600" />;
-      default:
-        return <Bell className="h-4 w-4 text-blue-600" />;
-    }
-  };
+
+  const { data: stats } = useNotificationStats();
+  const markAsRead = useMarkNotificationAsRead();
+  const markAllAsRead = useMarkAllNotificationsAsRead();
+  const notifications = data?.items || [];
+  const meta = data?.meta;
+  const totalPages = meta?.pages ?? 1;
+  const hasUnread = (stats?.pending ?? 0) > 0;
 
   return (
     <div>
@@ -61,7 +70,7 @@ export default function NotificationsPage() {
                   <Mail className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{mockNotifications.length}</div>
+                  <div className="text-2xl font-bold">{stats?.totalSent ?? 0}</div>
                   <p className="text-sm text-muted-foreground">Total Sent</p>
                 </div>
               </div>
@@ -75,9 +84,7 @@ export default function NotificationsPage() {
                   <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">
-                    {mockNotifications.filter(n => n.status === 'sent').length}
-                  </div>
+                  <div className="text-2xl font-bold">{stats?.delivered ?? 0}</div>
                   <p className="text-sm text-muted-foreground">Delivered</p>
                 </div>
               </div>
@@ -91,9 +98,7 @@ export default function NotificationsPage() {
                   <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">
-                    {mockNotifications.filter(n => n.status === 'pending').length}
-                  </div>
+                  <div className="text-2xl font-bold">{stats?.pending ?? 0}</div>
                   <p className="text-sm text-muted-foreground">Pending</p>
                 </div>
               </div>
@@ -107,9 +112,7 @@ export default function NotificationsPage() {
                   <ShoppingCart className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">
-                    {mockNotifications.filter(n => n.type === 'order_placed').length}
-                  </div>
+                  <div className="text-2xl font-bold">{stats?.orderAlerts ?? 0}</div>
                   <p className="text-sm text-muted-foreground">Order Alerts</p>
                 </div>
               </div>
@@ -120,28 +123,62 @@ export default function NotificationsPage() {
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="order_placed">Order Placed</SelectItem>
-                  <SelectItem value="payment_confirmed">Payment Confirmed</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Select
+                  value={typeFilter}
+                  onValueChange={(value) => {
+                    setTypeFilter(value);
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="order_created">Order Created</SelectItem>
+                    <SelectItem value="order_status_change">Order Status Changed</SelectItem>
+                    <SelectItem value="payment_confirmed">Payment Confirmed</SelectItem>
+                    <SelectItem value="payment_received">Payment Received</SelectItem>
+                    <SelectItem value="payment_failed">Payment Failed</SelectItem>
+                    <SelectItem value="inspection_completed">Inspection Completed</SelectItem>
+                    <SelectItem value="shipment_update">Shipment Update</SelectItem>
+                    <SelectItem value="delivery_scheduled">Delivery Scheduled</SelectItem>
+                    <SelectItem value="order_delivered">Order Delivered</SelectItem>
+                    <SelectItem value="refund_processed">Refund Processed</SelectItem>
+                    <SelectItem value="quote_expired">Quote Expired</SelectItem>
+                    <SelectItem value="system_alert">System Alert</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="sent">Sent</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                </SelectContent>
-              </Select>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value) => {
+                    setStatusFilter(value as 'all' | 'pending' | 'completed');
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Unread</SelectItem>
+                    <SelectItem value="completed">Read</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <CustomBtn
+                variant="solid"
+                icon={CheckCheck}
+                onClick={() => markAllAsRead.mutate()}
+                isLoading={markAllAsRead.isPending}
+                isDisabled={!hasUnread}
+                className="min-w-44 bg-emerald-600 text-white font-semibold rounded-lg px-4 py-2 shadow-sm hover:bg-emerald-700 disabled:bg-emerald-200 disabled:text-emerald-700"
+              >
+                Mark All as Read
+              </CustomBtn>
             </div>
           </CardContent>
         </Card>
@@ -149,75 +186,107 @@ export default function NotificationsPage() {
         {/* Notifications Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Email Notifications</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Message</TableHead>
-                    <TableHead>Recipient</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredNotifications.map((notif) => (
-                    <TableRow key={notif.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getNotificationIcon(notif.type)}
-                          <span className="text-sm capitalize">
-                            {notif.type.replace('_', ' ')}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">{notif.title}</TableCell>
-                      <TableCell className="max-w-md truncate">
-                        {notif.message}
-                      </TableCell>
-                      <TableCell className="text-sm">{notif.recipient}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={notif.status === 'sent' ? 'completed' : 'pending'} />
-
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(notif.createdAt), 'MMM d, yyyy HH:mm')}
-                      </TableCell>
+            {isLoading ? (
+              <LoadingSpinner text="Loading notifications..." />
+            ) : notifications.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {/* <TableHead>Type</TableHead> */}
+                      <TableHead>Title</TableHead>
+                      <TableHead>Message</TableHead>
+                      <TableHead>Recipient</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Action</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {notifications.map((notif) => (
+                      <TableRow key={notif.id}>
+                        {/* <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getNotificationIcon(notif.type)}
+                            <span className="text-sm capitalize">
+                              {notif.type.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </TableCell> */}
+                        <TableCell className="font-medium">{notif.title}</TableCell>
+                        <TableCell className="max-w-md truncate">
+                          {notif.message}
+                        </TableCell>
+                        <TableCell className="text-sm">{notif.recipient}</TableCell>
+                        <TableCell>
+                          <StatusBadge status={notif.status === 'read' ? 'completed' : 'pending'} />
+
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {format(new Date(notif.createdAt), 'MMM d, yyyy HH:mm')}
+                        </TableCell>
+                        <TableCell>
+                          {notif.status === 'unread' ? (
+                            <CustomBtn
+                              size="sm"
+                              variant="flat"
+                              icon={Check}
+                              onClick={() => markAsRead.mutate(notif.id)}
+                              isLoading={markAsRead.isPending && markAsRead.variables === notif.id}
+                              isDisabled={markAsRead.isPending && markAsRead.variables !== notif.id}
+                              className="cursor-pointer min-w-32 border border-emerald-200 bg-emerald-50 text-emerald-700 font-medium rounded-md hover:bg-emerald-100"
+                            >
+                              Mark as Read
+                            </CustomBtn>
+                          ) : (
+                            <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                              Read
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <EmptyState
+                icon={Bell}
+                title="No notifications"
+                description="No notifications match your filters"
+              />
+            )}
           </CardContent>
+          {totalPages > 1 && (
+            <CardFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-2">
+              <div className="text-sm text-muted-foreground">
+                Page {page} of {totalPages} • Total {meta?.total ?? notifications.length}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={page <= 1}
+                  className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 cursor-pointer hover:bg-gray-50"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={page >= totalPages}
+                  className="px-3 py-1.5 text-sm rounded-md border border-gray-300 disabled:opacity-50 cursor-pointer hover:bg-gray-50"
+                >
+                  Next
+                </button>
+              </div>
+            </CardFooter>
+          )}
+
         </Card>
 
-        {/* Info Card */}
-        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
-          <CardContent className="pt-6">
-            <div className="flex gap-3">
-              <Bell className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-medium text-blue-900 dark:text-blue-100">
-                  Automatic Email Notifications
-                </p>
-                <p className="text-sm text-blue-700 dark:text-blue-200">
-                  Emails are automatically sent when:
-                </p>
-                <ul className="text-sm text-blue-700 dark:text-blue-200 list-disc list-inside space-y-1 ml-2">
-                  <li>A new order is placed</li>
-                  <li>Payment is confirmed</li>
-                </ul>
-                <p className="text-xs text-blue-600 dark:text-blue-300 mt-2">
-                  Phase 2 will include shipment and delivery notifications. Phase 3 will add refund notifications.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { CustomBtn } from '@/components/shared/CustomBtn';
+import { ConfirmModal } from '@/components/shared/ConfirmModal';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -18,13 +19,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,14 +28,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   useVehicles,
-  useDeleteVehicle
+  useDeleteVehicle,
 } from '@/lib/hooks/useVehicles';
 import {
-  Search,
   Plus,
   MoreVertical,
   Eye,
-  Edit,
   Star,
   Car as CarIcon,
   Trash2
@@ -53,44 +45,46 @@ import { Vehicle } from '@/lib/api/queries';
 
 export function CarsListingPage() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<string>('all');
+  const { data: session } = useSession();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [vehicleToDelete, setVehicleToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
-  // Build filters object
   const filters = {
-    search: searchQuery || undefined,
-    source: sourceFilter !== 'all' ? sourceFilter.toUpperCase() : undefined,
-    status: statusFilter !== 'all' ? statusFilter : undefined,
-    vehicleType: vehicleTypeFilter !== 'all' ? vehicleTypeFilter : undefined,
     page: currentPage,
     limit: 10,
-    includeApi: true,
   };
 
   const { data, isLoading } = useVehicles(filters);
   const deleteVehicle = useDeleteVehicle();
+  const canManageVehicles =
+    session?.user.role === 'SUPER_ADMIN' ||
+    session?.user.role === 'OPERATIONS_ADMIN';
 
-  const vehicles = data?.data || [];
+  const vehicles = data?.items || [];
   const meta = data?.meta;
 
   // Calculate stats
   const stats = {
     total: meta?.total || 0,
     available: vehicles.filter(v => v.status === 'AVAILABLE').length,
-    fromApi: meta?.fromApi || 0,
-    featured: vehicles.filter(v => v.features).length,
+    active: vehicles.filter(v => v.isActive).length,
+    featured: vehicles.filter(v => v.featured).length,
   };
 
   const handleDelete = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete ${name}?`)) {
-      deleteVehicle.mutate(id);
-    }
+    setVehicleToDelete({ id, name });
   };
 
+  const confirmDelete = () => {
+    if (!vehicleToDelete) return;
+    deleteVehicle.mutate(vehicleToDelete.id, {
+      onSuccess: () => setVehicleToDelete(null),
+    });
+  };
 
   function getPrimaryImage(vehicle: Vehicle): string {
     const fallbackImage = 'https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg?auto=compress&cs=tinysrgb&w=800';
@@ -129,8 +123,8 @@ export function CarsListingPage() {
           </Card>
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{stats.fromApi}</div>
-              <p className="text-sm text-muted-foreground">From API</p>
+              <div className="text-2xl font-bold">{stats.active}</div>
+              <p className="text-sm text-muted-foreground">Active Listings</p>
             </CardContent>
           </Card>
           <Card>
@@ -141,71 +135,15 @@ export function CarsListingPage() {
           </Card>
         </div>
 
-        {/* Search and Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by make, model, VIN..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-                  <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                    <SelectTrigger className="w-full sm:w-40">
-                      <SelectValue placeholder="Source" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Sources</SelectItem>
-                      <SelectItem value="api">API Only</SelectItem>
-                      <SelectItem value="manual">Manual Only</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-40">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="AVAILABLE">Available</SelectItem>
-                      <SelectItem value="SOLD">Sold</SelectItem>
-                      <SelectItem value="PENDING">Pending</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={vehicleTypeFilter} onValueChange={setVehicleTypeFilter}>
-                    <SelectTrigger className="w-full sm:w-40">
-                      <SelectValue placeholder="Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="CAR">Car</SelectItem>
-                      <SelectItem value="SEDAN">Sedan</SelectItem>
-                      <SelectItem value="SUV">SUV</SelectItem>
-                      <SelectItem value="TRUCK">Truck</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <CustomBtn
-                  icon={Plus}
-                  onClick={() => setAddModalOpen(true)}
-                  className="bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
-                >
-                  Add Vehicle
-                </CustomBtn>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex justify-end">
+          <CustomBtn
+            icon={Plus}
+            onClick={() => setAddModalOpen(true)}
+            className="bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+          >
+            Add Vehicle
+          </CustomBtn>
+        </div>
 
         {/* Vehicles Table */}
         <Card>
@@ -258,7 +196,7 @@ export function CarsListingPage() {
                                   <span className="truncate">
                                     {vehicle.make} {vehicle.model}
                                   </span>
-                                  {vehicle.features && (
+                                  {vehicle.featured && (
                                     <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 shrink-0" />
                                   )}
                                 </div>
@@ -283,7 +221,7 @@ export function CarsListingPage() {
                               : 'N/A'}
                           </TableCell>
                           <TableCell>
-                            <StatusBadge status={vehicle.source} />
+                            <StatusBadge status={vehicle.source === 'API' ? 'api' : 'manual'} />
                           </TableCell>
                           <TableCell>
                             <StatusBadge status={vehicle.status} />
@@ -302,30 +240,27 @@ export function CarsListingPage() {
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                  onClick={() => router.push(`/admin/vehicles/${vehicle.id}`)}
+                                  onClick={() => router.push(`/admin/seller-vehicles/${vehicle.id}`)}
                                 >
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => router.push(`/admin/vehicles/${vehicle.id}/edit`)}
-                                >
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Edit Vehicle
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => handleDelete(
-                                    vehicle.id,
-                                    `${vehicle.make} ${vehicle.model}`
-                                  )}
-                                  disabled={deleteVehicle.isPending}
-                                  className="text-red-600"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                                </DropdownMenuItem>
+                                {canManageVehicles && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => handleDelete(
+                                        vehicle.id,
+                                        `${vehicle.make} ${vehicle.model}`
+                                      )}
+                                      disabled={deleteVehicle.isPending}
+                                      className="text-red-600"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -364,11 +299,7 @@ export function CarsListingPage() {
               <EmptyState
                 icon={CarIcon}
                 title="No vehicles found"
-                description={
-                  searchQuery
-                    ? "Try adjusting your search or filters"
-                    : "Start by adding your first vehicle"
-                }
+                description="Start by adding your first vehicle"
                 action={{
                   label: "Add Vehicle",
                   onClick: () => setAddModalOpen(true),
@@ -382,6 +313,24 @@ export function CarsListingPage() {
 
       {/* Add Vehicle Modal */}
       <AddCarModal open={addModalOpen} onOpenChange={setAddModalOpen} />
+
+      <ConfirmModal
+        open={!!vehicleToDelete}
+        onOpenChange={(open) => {
+          if (!open) setVehicleToDelete(null);
+        }}
+        title="Delete Vehicle"
+        description="This action removes the vehicle from the seller vehicles list."
+        message={
+          vehicleToDelete
+            ? `Are you sure you want to delete ${vehicleToDelete.name}?`
+            : ''
+        }
+        onConfirm={confirmDelete}
+        confirmText="Delete Vehicle"
+        isLoading={deleteVehicle.isPending}
+        variant="destructive"
+      />
     </div>
   );
 }

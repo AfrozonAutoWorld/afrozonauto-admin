@@ -4,7 +4,7 @@
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingSpinner, StatCard, EmptyState } from '@/components/shared';
-import { useDashboardStats, useOrders, useRecentActivities } from '@/lib/hooks';
+import { useDashboardStats, usePendingOrders, useRecentActivities } from '@/lib/hooks';
 
 
 import {
@@ -28,15 +28,21 @@ import {
 } from '@/components/ui/table';
 import { useRouter } from 'next/navigation';
 
+const getValidDate = (value?: string) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
 
 export default function DashboardPage() {
   const router = useRouter();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: activities, isLoading: activitiesLoading } = useRecentActivities();
-  const { data: orders, isLoading: ordersLoading } = useOrders();
+  const { data: pendingData, isLoading: ordersLoading } = usePendingOrders({ limit: 5, page: 1 });
+  const orders = pendingData?.items || [];
 
   // Get pending orders
-  const pendingOrders = orders?.filter(order => order.status === 'pending').slice(0, 5) || [];
+  const pendingOrders = orders.filter(order => order.status === 'pending').slice(0, 5);
 
 
   const getActivityIcon = (type: string) => {
@@ -49,6 +55,8 @@ export default function DashboardPage() {
         return <Users className="h-4 w-4" />;
       case 'car':
         return <Car className="h-4 w-4" />;
+      case 'shipment':
+        return <Clock className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
     }
@@ -64,6 +72,8 @@ export default function DashboardPage() {
         return 'bg-blue-100 text-blue-600';
       case 'car':
         return 'bg-green-100 text-green-600';
+      case 'shipment':
+        return 'bg-orange-100 text-orange-600';
       default:
         return 'bg-gray-100 text-gray-600';
     }
@@ -78,7 +88,7 @@ export default function DashboardPage() {
 
       <div className="p-6 space-y-6">
         {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 lg:grid-rows-2">
           <StatCard
             title="Total Users"
             value={stats?.totalUsers || 0}
@@ -92,7 +102,7 @@ export default function DashboardPage() {
             title="Total Cars"
             value={stats?.totalCars || 0}
             icon={Car}
-            description={`${stats?.apiCars || 0} API • ${stats?.manualCars || 0} Manual`}
+            description={`${stats?.carBreakdown?.api || 0} API • ${stats?.carBreakdown?.manual || 0} Manual`}
             iconColor="text-green-600"
             iconBgColor="bg-green-100"
             isLoading={statsLoading}
@@ -102,7 +112,7 @@ export default function DashboardPage() {
             title="Total Orders"
             value={stats?.totalOrders || 0}
             icon={ShoppingCart}
-            badge={stats?.pendingOrders ? `${stats.pendingOrders} Pending` : undefined}
+            badge={stats?.pendingOrdersCount ? `${stats.pendingOrdersCount} Pending` : undefined}
             iconColor="text-purple-600"
             iconBgColor="bg-purple-100"
             isLoading={statsLoading}
@@ -110,16 +120,65 @@ export default function DashboardPage() {
 
           <StatCard
             title="Total Revenue"
-            value={`$${((stats?.totalRevenue || 0) / 1000).toFixed(1)}k`}
+            value={`$${(stats?.totalRevenue || 0).toLocaleString()}`}
             icon={DollarSign}
             trend={{
-              value: '12.5%',
-              isPositive: true,
+              value: `${Math.abs(stats?.revenueChangePercent || 0).toFixed(1)}%`,
+              isPositive: (stats?.revenueChangePercent || 0) >= 0,
             }}
             iconColor="text-emerald-600"
             iconBgColor="bg-emerald-100"
             isLoading={statsLoading}
           />
+
+          <StatCard
+            title="Pending Orders"
+            value={stats?.pendingOrdersCount || 0}
+            icon={Users}
+            iconColor="text-blue-600"
+            iconBgColor="bg-blue-100"
+            isLoading={statsLoading}
+          />
+
+          <StatCard
+            title="Total Revenue This Month"
+            value={`$${(stats?.revenueThisMonth || 0).toLocaleString()}`}
+            icon={DollarSign}
+            trend={{
+              value: `${Math.abs(stats?.revenueChangePercent || 0).toFixed(1)}%`,
+              isPositive: (stats?.revenueChangePercent || 0) >= 0,
+            }}
+            iconColor="text-emerald-600"
+            iconBgColor="bg-emerald-100"
+            isLoading={statsLoading}
+          />
+
+          <StatCard
+            title="Total Revenue Last Month"
+            value={`$${(stats?.revenueLastMonth || 0).toLocaleString()}`}
+            icon={DollarSign}
+            trend={{
+              value: `${Math.abs(stats?.revenueChangePercent || 0).toFixed(1)}%`,
+              isPositive: (stats?.revenueChangePercent || 0) >= 0,
+            }}
+            iconColor="text-emerald-600"
+            iconBgColor="bg-emerald-100"
+            isLoading={statsLoading}
+          />
+
+          <StatCard
+            title="Revenue Change(%)"
+            value={`$${(stats?.revenueChangePercent || 0).toLocaleString()}`}
+            icon={DollarSign}
+            trend={{
+              value: `${Math.abs(stats?.revenueChangePercent || 0).toFixed(1)}%`,
+              isPositive: (stats?.revenueChangePercent || 0) >= 0,
+            }}
+            iconColor="text-emerald-600"
+            iconBgColor="bg-emerald-100"
+            isLoading={statsLoading}
+          />
+
         </div>
 
         <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
@@ -244,9 +303,12 @@ export default function DashboardPage() {
                             </>
                           )}
                           <span>
-                            {formatDistanceToNow(new Date(activity.timestamp), {
-                              addSuffix: true
-                            })}
+                            {(() => {
+                              const activityDate = getValidDate(activity.timestamp);
+                              return activityDate
+                                ? formatDistanceToNow(activityDate, { addSuffix: true })
+                                : 'Unknown time';
+                            })()}
                           </span>
                         </div>
                       </div>

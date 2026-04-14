@@ -3,285 +3,344 @@
 import { useState } from 'react';
 import { useCreateVehicle } from '@/lib/hooks/useVehicles';
 import { Modal } from '../shared';
-import { FormField, SelectField } from '@/components/Form';
-import { Switch } from '@nextui-org/react';
-import {
-  MakeSchema,
-  ModelSchema,
-  YearSchema,
-  PriceSchema,
-  MileageSchema,
-  VinSchema
-} from '@/lib/schema';
+import { FormField, SelectField, TextAreaField } from '@/components/Form';
+import { MakeSchema, ModelSchema, YearSchema, PriceSchema, MileageSchema } from '@/lib/schema';
 import { useField } from '@/lib';
 import { toast } from 'sonner';
 
-const vehicleTypeOptions = [
-  { value: "CAR", label: "Car" },
-  { value: "SEDAN", label: "Sedan" },
-  { value: "SUV", label: "SUV" },
-  { value: "TRUCK", label: "Truck" },
-  { value: "VAN", label: "Van" },
-  { value: "COUPE", label: "Coupe" },
-  { value: "HATCHBACK", label: "Hatchback" },
-  { value: "WAGON", label: "Wagon" },
-  { value: "CONVERTIBLE", label: "Convertible" },
-  { value: "MOTORCYCLE", label: "Motorcycle" },
-  { value: "OTHER", label: "Other" },
+const conditionOptions = [
+  { value: 'EXCELLENT', label: 'Excellent' },
+  { value: 'GOOD', label: 'Good' },
+  { value: 'FAIR', label: 'Fair' },
+  { value: 'BAD', label: 'Bad' },
 ];
 
+const vehicleTypeOptions = [
+  { value: 'OTHER', label: 'Other' },
+  { value: 'CAR', label: 'Car' },
+  { value: 'SUV', label: 'SUV' },
+  { value: 'TRUCK', label: 'Truck' },
+  { value: 'VAN', label: 'Van' },
+  { value: 'SEDAN', label: 'Sedan' },
+  { value: 'COUPE', label: 'Coupe' },
+  { value: 'HATCHBACK', label: 'Hatchback' },
+  { value: 'WAGON', label: 'Wagon' },
+  { value: 'CONVERTIBLE', label: 'Convertible' },
+  { value: 'MOTORCYCLE', label: 'Motorcycle' },
+];
 
 const transmissionOptions = [
-  { value: "Automatic", label: "Automatic" },
-  { value: "Manual", label: "Manual" },
-  { value: "Automated Manual", label: "Automated Manual" },
-  { value: "CVT", label: "CVT" },
+  { value: 'Automatic', label: 'Automatic' },
+  { value: 'Manual', label: 'Manual' },
+  { value: 'CVT', label: 'CVT' },
+  { value: 'Automated Manual', label: 'Automated Manual' },
 ];
 
 const fuelTypeOptions = [
-  { value: "Gasoline", label: "Gasoline" },
-  { value: "Diesel", label: "Diesel" },
-  { value: "Electric", label: "Electric" },
-  { value: "Hybrid", label: "Hybrid" },
-  { value: "Premium Unleaded (Recommended)", label: "Premium Unleaded" },
+  { value: 'Petrol', label: 'Petrol' },
+  { value: 'Diesel', label: 'Diesel' },
+  { value: 'Hybrid', label: 'Hybrid' },
+  { value: 'Electric', label: 'Electric' },
 ];
 
-const statusOptions = [
-  { value: "AVAILABLE", label: "Available" },
-  { value: "SOLD", label: "Sold" },
-  { value: "PENDING", label: "Pending" },
+const drivetrainOptions = [
+  { value: 'FWD', label: 'FWD' },
+  { value: 'RWD', label: 'RWD' },
+  { value: 'AWD', label: 'AWD' },
+  { value: '4WD', label: '4WD' },
 ];
 
-const availabilityOptions = [
-  { value: "IN_STOCK", label: "In Stock" },
-  { value: "IN_TRANSIT", label: "In Transit" },
-  { value: "AT_PORT", label: "At Port" },
-  { value: "READY_FOR_PICKUP", label: "Ready for Pickup" },
-  { value: "OUT_OF_STOCK", label: "Out of Stock" },
+const booleanOptions = [
+  { value: 'true', label: 'Yes' },
+  { value: 'false', label: 'No' },
 ];
 
+const preferredContactOptions = [
+  { value: 'Email', label: 'Email' },
+  { value: 'Phone', label: 'Phone' },
+  { value: 'WhatsApp', label: 'WhatsApp' },
+];
 
 interface AddCarModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
-  const createVehicle = useCreateVehicle();
+type InputEvent = React.ChangeEvent<HTMLInputElement>;
 
-  const { value: vin, error: vinError, handleChange: handleVinChange } =
-    useField('', VinSchema);
-
-  const { value: make, error: makeError, handleChange: handleMakeChange } =
-    useField('', MakeSchema);
-
-  const { value: model, error: modelError, handleChange: handleModelChange } =
-    useField('', ModelSchema);
-
-  const { value: year, error: yearError, handleChange: handleYearChange } =
-    useField(String(new Date().getFullYear()), YearSchema);
-
-  const { value: price, error: priceError, handleChange: handlePriceChange } =
-    useField('', PriceSchema);
-
-  const {
-    value: originalPrice,
-    error: originalPriceError,
-    handleChange: handleOriginalPriceChange,
-  } = useField('', PriceSchema);
-
-  const {
-    value: mileage,
-    error: mileageError,
-    handleChange: handleMileageChange,
-  } = useField('0', MileageSchema);
-
-  const [vehicleType, setVehicleType] = useState<string>("");
-  const [vehicleTypeError, setVehicleTypeError] = useState('');
-
-  const [transmission, setTransmission] = useState<string>("");
-  const [transmissionError, setTransmissionError] = useState('');
-
-  const [fuelType, setFuelType] = useState<string>("");
-  const [fuelTypeError, setFuelTypeError] = useState('');
-
-  const [status, setStatus] = useState<string>("AVAILABLE");
-  const [statusError, setStatusError] = useState('');
-
-  const [availability, setAvailability] = useState<string>("IN_STOCK");
-
-  const [imageUrls, setImageUrls] = useState<string[]>([""]);
-  const [uploading, setUploading] = useState(false);
-  const [featured, setFeatured] = useState(false);
-  const [isActive, setIsActive] = useState(true);
-  const [isHidden, setIsHidden] = useState(false);
-
-  const generateSlug = (make: string, model: string, year: string, vin: string) => {
-    const lastSix = vin.slice(-6);
-    return `${year}-${make}-${model}-${lastSix}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-  };
-
-
-  const handleImageChange = (index: number, value: string) => {
-    const updated = [...imageUrls];
-    updated[index] = value;
-    setImageUrls(updated);
-  };
-
-  const addImageField = () => setImageUrls([...imageUrls, ""]);
-  const removeImageField = (index: number) =>
-    setImageUrls(imageUrls.filter((_, i) => i !== index));
-
-
-
-  const validateForm = () => {
-    let isValid = true;
-
-    if (!vehicleType) {
-      setVehicleTypeError('Vehicle type is required');
-      isValid = false;
-    }
-    if (!transmission) {
-      setTransmissionError('Transmission is required');
-      isValid = false;
-    }
-    if (!fuelType) {
-      setFuelTypeError('Fuel type is required');
-      isValid = false;
-    }
-    if (!status) {
-      setStatusError('Status is required');
-      isValid = false;
-    }
-
-    return isValid && !vinError && !makeError && !modelError &&
-      !yearError && !priceError;
-  };
-
-  type InputEvent = React.ChangeEvent<HTMLInputElement>;
-
-  const makeEvent = (value: string): InputEvent =>
+const makeEvent = (value: string): InputEvent =>
   ({
     target: { value },
   } as InputEvent);
 
+const encodeListField = (value: string) => {
+  const items = value
+    .split(/\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (items.length === 0) return undefined;
+  if (items.length === 1) return items[0];
+  return JSON.stringify(items);
+};
+
+export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
+  const createVehicle = useCreateVehicle();
+
+  const { value: make, error: makeError, handleChange: handleMakeChange } =
+    useField('', MakeSchema);
+  const { value: model, error: modelError, handleChange: handleModelChange } =
+    useField('', ModelSchema);
+  const { value: year, error: yearError, handleChange: handleYearChange } =
+    useField(String(new Date().getFullYear()), YearSchema);
+  const { value: askingPrice, error: askingPriceError, handleChange: handleAskingPriceChange } =
+    useField('', PriceSchema);
+  const { value: mileage, error: mileageError, handleChange: handleMileageChange } =
+    useField('', MileageSchema);
+
+  const [vin, setVin] = useState('');
+  const [vehicleType, setVehicleType] = useState('OTHER');
+  const [trim, setTrim] = useState('');
+  const [bodyStyle, setBodyStyle] = useState('');
+  const [transmission, setTransmission] = useState('');
+  const [drivetrain, setDrivetrain] = useState('');
+  const [fuelType, setFuelType] = useState('');
+  const [exteriorColor, setExteriorColor] = useState('');
+  const [cylinders, setCylinders] = useState('');
+  const [condition, setCondition] = useState('');
+  const [conditionError, setConditionError] = useState('');
+  const [titleStatus, setTitleStatus] = useState('');
+  const [titleStatusError, setTitleStatusError] = useState('');
+  const [accidentHistory, setAccidentHistory] = useState('');
+  const [accidentHistoryError, setAccidentHistoryError] = useState('');
+  const [knownIssues, setKnownIssues] = useState('');
+  const [keys, setKeys] = useState('');
+  const [features, setFeatures] = useState('');
+  const [highlights, setHighlights] = useState('');
+  const [modifications, setModifications] = useState('');
+  const [showAskingPrice, setShowAskingPrice] = useState('true');
+  const [allowOffers, setAllowOffers] = useState('true');
+  const [additionalNotes, setAdditionalNotes] = useState('');
+  const [contactFirstName, setContactFirstName] = useState('');
+  const [contactFirstNameError, setContactFirstNameError] = useState('');
+  const [contactLastName, setContactLastName] = useState('');
+  const [contactLastNameError, setContactLastNameError] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactEmailError, setContactEmailError] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactPhoneError, setContactPhoneError] = useState('');
+  const [city, setCity] = useState('');
+  const [cityError, setCityError] = useState('');
+  const [zipCode, setZipCode] = useState('');
+  const [zipCodeError, setZipCodeError] = useState('');
+  const [preferredContact, setPreferredContact] = useState('');
+  const [bestTimeToReach, setBestTimeToReach] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
 
   const resetForm = () => {
-    handleVinChange(makeEvent(''));
     handleMakeChange(makeEvent(''));
     handleModelChange(makeEvent(''));
     handleYearChange(makeEvent(String(new Date().getFullYear())));
-    handlePriceChange(makeEvent(''));
-    handleOriginalPriceChange(makeEvent(''));
-    handleMileageChange(makeEvent('0'));
-
-    setVehicleType('');
+    handleAskingPriceChange(makeEvent(''));
+    handleMileageChange(makeEvent(''));
+    setVin('');
+    setVehicleType('OTHER');
+    setTrim('');
+    setBodyStyle('');
     setTransmission('');
+    setDrivetrain('');
     setFuelType('');
-    setStatus('AVAILABLE');
-    setAvailability('IN_STOCK');
-    setImageUrls(['']);
-    setFeatured(false);
-    setIsActive(true);
-    setIsHidden(false);
-
-    setVehicleTypeError('');
-    setTransmissionError('');
-    setFuelTypeError('');
-    setStatusError('');
+    setExteriorColor('');
+    setCylinders('');
+    setCondition('');
+    setConditionError('');
+    setTitleStatus('');
+    setTitleStatusError('');
+    setAccidentHistory('');
+    setAccidentHistoryError('');
+    setKnownIssues('');
+    setKeys('');
+    setFeatures('');
+    setHighlights('');
+    setModifications('');
+    setShowAskingPrice('true');
+    setAllowOffers('true');
+    setAdditionalNotes('');
+    setContactFirstName('');
+    setContactFirstNameError('');
+    setContactLastName('');
+    setContactLastNameError('');
+    setContactEmail('');
+    setContactEmailError('');
+    setContactPhone('');
+    setContactPhoneError('');
+    setCity('');
+    setCityError('');
+    setZipCode('');
+    setZipCodeError('');
+    setPreferredContact('');
+    setBestTimeToReach('');
+    setFiles([]);
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
+  const validateForm = () => {
+    let isValid = true;
+
+    if (!condition) {
+      setConditionError('Condition is required');
+      isValid = false;
     }
 
-    try {
-      setUploading(true);
-
-
-      // Create the payload matching the API format
-      const payload = {
-        vin,
-        slug: generateSlug(make, model, year, vin),
-        make,
-        model,
-        year: Number(year),
-        vehicleType,
-        priceUsd: Number(price),
-        transmission,
-        fuelType,
-        source: 'MANUAL',
-        status,
-        availability,
-        featured,
-        isActive,
-        isHidden,
-        ...(originalPrice ? { originalPriceUsd: Number(originalPrice) } : {}),
-        ...(mileage ? { mileage: Number(mileage) } : {}),
-        ...(imageUrls.filter(Boolean).length
-          ? { images: imageUrls.filter(url => url.trim() !== "") }
-          : {}),
-      };
-
-
-      // Send as JSON, not FormData
-      createVehicle.mutate(payload, {
-        onSuccess: () => {
-          onOpenChange(false);
-          resetForm();
-        },
-        onError: (error: unknown) => {
-          console.error('Create vehicle error:', error);
-          const message =
-            error instanceof Error
-              ? error.message
-              : "Unexpected error occurred";
-          const errorMessage = message.includes("Network")
-            ? "Network error. Please check your internet connection."
-            : message;
-
-          toast.error(errorMessage || 'Failed to create vehicle');
-        },
-      });
-    } catch (error) {
-      console.error('Submit error:', error);
-      toast.error('Failed to upload images');
-    } finally {
-      setUploading(false);
+    if (!titleStatus.trim()) {
+      setTitleStatusError('Title status is required');
+      isValid = false;
+    } else {
+      setTitleStatusError('');
     }
+
+    if (!accidentHistory.trim()) {
+      setAccidentHistoryError('Accident history is required');
+      isValid = false;
+    } else {
+      setAccidentHistoryError('');
+    }
+
+    if (!contactFirstName.trim()) {
+      setContactFirstNameError('First name is required');
+      isValid = false;
+    } else {
+      setContactFirstNameError('');
+    }
+
+    if (!contactLastName.trim()) {
+      setContactLastNameError('Last name is required');
+      isValid = false;
+    } else {
+      setContactLastNameError('');
+    }
+
+    if (!contactEmail.trim()) {
+      setContactEmailError('Email is required');
+      isValid = false;
+    } else {
+      setContactEmailError('');
+    }
+
+    if (!contactPhone.trim()) {
+      setContactPhoneError('Phone is required');
+      isValid = false;
+    } else {
+      setContactPhoneError('');
+    }
+
+    if (!city.trim()) {
+      setCityError('City is required');
+      isValid = false;
+    } else {
+      setCityError('');
+    }
+
+    if (!zipCode.trim()) {
+      setZipCodeError('Zip code is required');
+      isValid = false;
+    } else {
+      setZipCodeError('');
+    }
+
+    if (files.length > 10) {
+      toast.error('You can upload at most 10 files');
+      isValid = false;
+    }
+
+    return (
+      isValid &&
+      !makeError &&
+      !modelError &&
+      !yearError &&
+      !askingPriceError &&
+      !mileageError
+    );
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextFiles = Array.from(event.target.files ?? []).slice(0, 10);
+    setFiles(nextFiles);
+  };
+
+  const handleSubmit = () => {
+    if (!validateForm()) return;
+
+    const formData = new FormData();
+    formData.append('year', year);
+    formData.append('make', make.trim());
+    formData.append('model', model.trim());
+    formData.append('askingPrice', askingPrice);
+    formData.append('mileage', mileage);
+    formData.append('condition', condition);
+    formData.append('titleStatus', encodeListField(titleStatus) ?? titleStatus.trim());
+    formData.append('accidentHistory', accidentHistory.trim());
+    formData.append('contactFirstName', contactFirstName.trim());
+    formData.append('contactLastName', contactLastName.trim());
+    formData.append('contactEmail', contactEmail.trim());
+    formData.append('contactPhone', contactPhone.trim());
+    formData.append('city', city.trim());
+    formData.append('zipCode', zipCode.trim());
+    formData.append('vehicleType', vehicleType || 'OTHER');
+    formData.append('showAskingPrice', showAskingPrice);
+    formData.append('allowOffers', allowOffers);
+
+    if (vin.trim()) formData.append('vin', vin.trim());
+    if (trim.trim()) formData.append('trim', trim.trim());
+    if (bodyStyle.trim()) formData.append('bodyStyle', bodyStyle.trim());
+    if (transmission) formData.append('transmission', transmission);
+    if (drivetrain) formData.append('drivetrain', drivetrain);
+    if (fuelType) formData.append('fuelType', fuelType);
+    if (exteriorColor.trim()) formData.append('exteriorColor', exteriorColor.trim());
+    if (cylinders.trim()) formData.append('cylinders', cylinders.trim());
+    if (keys.trim()) formData.append('keys', keys.trim());
+    if (modifications.trim()) formData.append('modifications', modifications.trim());
+    if (additionalNotes.trim()) formData.append('additionalNotes', additionalNotes.trim());
+    if (preferredContact) formData.append('preferredContact', preferredContact);
+    if (bestTimeToReach.trim()) formData.append('bestTimeToReach', bestTimeToReach.trim());
+
+    const knownIssuesValue = encodeListField(knownIssues);
+    if (knownIssuesValue) formData.append('knownIssues', knownIssuesValue);
+
+    const featuresValue = encodeListField(features);
+    if (featuresValue) formData.append('features', featuresValue);
+
+    const highlightsValue = encodeListField(highlights);
+    if (highlightsValue) formData.append('highlights', highlightsValue);
+
+    files.forEach((file) => formData.append('files', file));
+
+    createVehicle.mutate(formData, {
+      onSuccess: () => {
+        resetForm();
+        onOpenChange(false);
+      },
+      onError: (error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : 'Failed to submit vehicle';
+        toast.error(message);
+      },
+    });
   };
 
   return (
     <Modal
       open={open}
       onOpenChange={onOpenChange}
-      title="Add New Vehicle"
-      description="Add a vehicle listing manually to your inventory"
+      title="Submit Seller Vehicle"
+      description="Send the seller vehicle submission payload as multipart/form-data, including contact details and optional media."
       size="lg"
       showFooter
       onConfirm={handleSubmit}
-      confirmText="Add Vehicle"
-      isLoading={createVehicle.isPending || uploading}
+      confirmText="Submit Vehicle"
+      isLoading={createVehicle.isPending}
     >
-      <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField
-            label="VIN"
-            id="vin"
-            type="text"
-            htmlFor="vin"
-            placeholder="1HGBH41JXMN109186"
-            value={vin}
-            onChange={handleVinChange}
-            isInvalid={!!vinError}
-            errorMessage={vinError}
-            reqValue="*"
-          />
-
           <FormField
             label="Make"
             id="make"
@@ -292,6 +351,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
             onChange={handleMakeChange}
             isInvalid={!!makeError}
             errorMessage={makeError}
+            required
             reqValue="*"
           />
 
@@ -305,6 +365,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
             onChange={handleModelChange}
             isInvalid={!!modelError}
             errorMessage={modelError}
+            required
             reqValue="*"
           />
 
@@ -317,49 +378,22 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
             onChange={handleYearChange}
             isInvalid={!!yearError}
             errorMessage={yearError}
-            reqValue="*"
-          />
-
-          <SelectField
-            label="Vehicle Type"
-            htmlFor="vehicleType"
-            id="vehicleType"
-            placeholder="Select Type"
-            isInvalid={!!vehicleTypeError}
-            errorMessage={vehicleTypeError}
-            value={vehicleType}
-            onChange={(value: string) => {
-              setVehicleType(value);
-              setVehicleTypeError("");
-            }}
-            options={vehicleTypeOptions}
             required
             reqValue="*"
           />
 
           <FormField
-            label="Price (USD)"
-            id="price"
-            htmlFor="price"
+            label="Asking Price (USD)"
+            id="askingPrice"
+            htmlFor="askingPrice"
             type="number"
-            placeholder="25000"
-            value={price}
-            onChange={handlePriceChange}
-            isInvalid={!!priceError}
-            errorMessage={priceError}
+            placeholder="18500"
+            value={askingPrice}
+            onChange={handleAskingPriceChange}
+            isInvalid={!!askingPriceError}
+            errorMessage={askingPriceError}
+            required
             reqValue="*"
-          />
-
-          <FormField
-            label="Original Price (USD)"
-            id="originalPrice"
-            htmlFor="originalPrice"
-            type="number"
-            placeholder="28000"
-            value={originalPrice}
-            onChange={handleOriginalPriceChange}
-            isInvalid={!!originalPriceError}
-            errorMessage={originalPriceError}
           />
 
           <FormField
@@ -367,160 +401,409 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
             id="mileage"
             htmlFor="mileage"
             type="number"
-            placeholder="15000"
+            placeholder="45000"
             value={mileage}
             onChange={handleMileageChange}
             isInvalid={!!mileageError}
             errorMessage={mileageError}
+            required
+            reqValue="*"
+          />
+
+          <FormField
+            label="VIN"
+            id="vin"
+            type="text"
+            htmlFor="vin"
+            placeholder="Leave blank to auto-generate"
+            value={vin}
+            onChange={setVin}
+          />
+
+          <SelectField
+            label="Condition"
+            htmlFor="condition"
+            id="condition"
+            placeholder="Select condition"
+            isInvalid={!!conditionError}
+            errorMessage={conditionError}
+            value={condition}
+            onChange={(value) => {
+              setCondition(value);
+              setConditionError('');
+            }}
+            options={conditionOptions}
+            required
+            reqValue="*"
+          />
+
+          <SelectField
+            label="Vehicle Type"
+            htmlFor="vehicleType"
+            id="vehicleType"
+            placeholder="Select vehicle type"
+            value={vehicleType}
+            onChange={setVehicleType}
+            options={vehicleTypeOptions}
+            isInvalid={false}
+            errorMessage=""
+          />
+
+          <FormField
+            label="Trim"
+            id="trim"
+            type="text"
+            htmlFor="trim"
+            placeholder="XSE"
+            value={trim}
+            onChange={setTrim}
+          />
+
+          <FormField
+            label="Body Style"
+            id="bodyStyle"
+            type="text"
+            htmlFor="bodyStyle"
+            placeholder="Sedan"
+            value={bodyStyle}
+            onChange={setBodyStyle}
           />
 
           <SelectField
             label="Transmission"
             htmlFor="transmission"
             id="transmission"
-            placeholder="Select Transmission"
-            isInvalid={!!transmissionError}
-            errorMessage={transmissionError}
+            placeholder="Select transmission"
             value={transmission}
-            onChange={(value: string) => {
-              setTransmission(value);
-              setTransmissionError("");
-            }}
+            onChange={setTransmission}
+            isInvalid={false}
+            errorMessage=""
             options={transmissionOptions}
-            required
-            reqValue="*"
+          />
+
+          <SelectField
+            label="Drivetrain"
+            htmlFor="drivetrain"
+            id="drivetrain"
+            placeholder="Select drivetrain"
+            value={drivetrain}
+            onChange={setDrivetrain}
+            isInvalid={false}
+            errorMessage=""
+            options={drivetrainOptions}
           />
 
           <SelectField
             label="Fuel Type"
             htmlFor="fuelType"
             id="fuelType"
-            placeholder="Select Fuel Type"
-            isInvalid={!!fuelTypeError}
-            errorMessage={fuelTypeError}
+            placeholder="Select fuel type"
             value={fuelType}
-            onChange={(value: string) => {
-              setFuelType(value);
-              setFuelTypeError("");
-            }}
+            onChange={setFuelType}
+            isInvalid={false}
+            errorMessage=""
             options={fuelTypeOptions}
-            required
-            reqValue="*"
+          />
+
+          <FormField
+            label="Exterior Color"
+            id="exteriorColor"
+            type="text"
+            htmlFor="exteriorColor"
+            placeholder="Silver"
+            value={exteriorColor}
+            onChange={setExteriorColor}
+          />
+
+          <FormField
+            label="Cylinders"
+            id="cylinders"
+            type="number"
+            htmlFor="cylinders"
+            placeholder="4"
+            value={cylinders}
+            onChange={setCylinders}
+          />
+
+          <FormField
+            label="Keys"
+            id="keys"
+            type="number"
+            htmlFor="keys"
+            placeholder="2"
+            value={keys}
+            onChange={setKeys}
           />
 
           <SelectField
-            label="Status"
-            htmlFor="status"
-            id="status"
-            placeholder="Select Status"
-            isInvalid={!!statusError}
-            errorMessage={statusError}
-            value={status}
-            onChange={(value: string) => {
-              setStatus(value);
-              setStatusError("");
+            label="Show Asking Price"
+            htmlFor="showAskingPrice"
+            id="showAskingPrice"
+            value={showAskingPrice}
+            onChange={setShowAskingPrice}
+            options={booleanOptions}
+            isInvalid={false}
+            errorMessage=""
+          />
+
+          <SelectField
+            label="Allow Offers"
+            htmlFor="allowOffers"
+            id="allowOffers"
+            value={allowOffers}
+            onChange={setAllowOffers}
+            options={booleanOptions}
+            isInvalid={false}
+            errorMessage=""
+          />
+
+          <FormField
+            label="Contact First Name"
+            id="contactFirstName"
+            type="text"
+            htmlFor="contactFirstName"
+            placeholder="John"
+            value={contactFirstName}
+            onChange={(value) => {
+              setContactFirstName(value);
+              setContactFirstNameError('');
             }}
-            options={statusOptions}
+            isInvalid={!!contactFirstNameError}
+            errorMessage={contactFirstNameError}
+            required
+            reqValue="*"
+          />
+
+          <FormField
+            label="Contact Last Name"
+            id="contactLastName"
+            type="text"
+            htmlFor="contactLastName"
+            placeholder="Doe"
+            value={contactLastName}
+            onChange={(value) => {
+              setContactLastName(value);
+              setContactLastNameError('');
+            }}
+            isInvalid={!!contactLastNameError}
+            errorMessage={contactLastNameError}
+            required
+            reqValue="*"
+          />
+
+          <FormField
+            label="Contact Email"
+            id="contactEmail"
+            type="email"
+            htmlFor="contactEmail"
+            placeholder="john@example.com"
+            value={contactEmail}
+            onChange={(value) => {
+              setContactEmail(value);
+              setContactEmailError('');
+            }}
+            isInvalid={!!contactEmailError}
+            errorMessage={contactEmailError}
+            required
+            reqValue="*"
+          />
+
+          <FormField
+            label="Contact Phone"
+            id="contactPhone"
+            type="text"
+            htmlFor="contactPhone"
+            placeholder="+2348012345678"
+            value={contactPhone}
+            onChange={(value) => {
+              setContactPhone(value);
+              setContactPhoneError('');
+            }}
+            isInvalid={!!contactPhoneError}
+            errorMessage={contactPhoneError}
+            required
+            reqValue="*"
+          />
+
+          <FormField
+            label="City"
+            id="city"
+            type="text"
+            htmlFor="city"
+            placeholder="Lagos"
+            value={city}
+            onChange={(value) => {
+              setCity(value);
+              setCityError('');
+            }}
+            isInvalid={!!cityError}
+            errorMessage={cityError}
+            required
+            reqValue="*"
+          />
+
+          <FormField
+            label="Zip Code"
+            id="zipCode"
+            type="text"
+            htmlFor="zipCode"
+            placeholder="100001"
+            value={zipCode}
+            onChange={(value) => {
+              setZipCode(value);
+              setZipCodeError('');
+            }}
+            isInvalid={!!zipCodeError}
+            errorMessage={zipCodeError}
             required
             reqValue="*"
           />
 
           <SelectField
-            label="Availability"
-            htmlFor="availability"
-            id="availability"
-            placeholder="Select Availability"
-            value={availability}
-            onChange={setAvailability}
-            options={availabilityOptions}
+            label="Preferred Contact"
+            htmlFor="preferredContact"
+            id="preferredContact"
+            placeholder="Select preferred contact"
+            value={preferredContact}
+            onChange={setPreferredContact}
+            options={preferredContactOptions}
+            isInvalid={false}
+            errorMessage=""
+          />
+
+          <FormField
+            label="Best Time To Reach"
+            id="bestTimeToReach"
+            type="text"
+            htmlFor="bestTimeToReach"
+            placeholder="Morning"
+            value={bestTimeToReach}
+            onChange={setBestTimeToReach}
           />
         </div>
 
-        {/* Image Upload Section */}
-        {/* Image URL Section */}
+        <TextAreaField
+          label="Title Status"
+          htmlFor="titleStatus"
+          id="titleStatus"
+          placeholder="Clean title, lien free"
+          value={titleStatus}
+          onChange={(value) => {
+            setTitleStatus(value);
+            setTitleStatusError('');
+          }}
+          isInvalid={!!titleStatusError}
+          errorMessage={titleStatusError}
+          required
+          rows={4}
+          disableAutosize
+          fixedHeightClassName="h-32"
+        />
+
+        <TextAreaField
+          label="Accident History"
+          htmlFor="accidentHistory"
+          id="accidentHistory"
+          placeholder="No accidents"
+          value={accidentHistory}
+          onChange={(value) => {
+            setAccidentHistory(value);
+            setAccidentHistoryError('');
+          }}
+          isInvalid={!!accidentHistoryError}
+          errorMessage={accidentHistoryError}
+          required
+          rows={4}
+          disableAutosize
+          fixedHeightClassName="h-32"
+        />
+
+        <TextAreaField
+          label="Known Issues"
+          htmlFor="knownIssues"
+          id="knownIssues"
+          placeholder="Engine ticking"
+          value={knownIssues}
+          onChange={setKnownIssues}
+          isInvalid={false}
+          errorMessage=""
+          rows={4}
+          disableAutosize
+          fixedHeightClassName="h-32"
+        />
+
+        <TextAreaField
+          label="Features"
+          htmlFor="features"
+          id="features"
+          placeholder="Sunroof, Leather seats"
+          value={features}
+          onChange={setFeatures}
+          isInvalid={false}
+          errorMessage=""
+          rows={5}
+          disableAutosize
+          fixedHeightClassName="h-40"
+        />
+
+        <TextAreaField
+          label="Highlights"
+          htmlFor="highlights"
+          id="highlights"
+          placeholder="New brakes installed 2024"
+          value={highlights}
+          onChange={setHighlights}
+          isInvalid={false}
+          errorMessage=""
+          rows={5}
+          disableAutosize
+          fixedHeightClassName="h-40"
+        />
+
+        <TextAreaField
+          label="Additional Notes"
+          htmlFor="additionalNotes"
+          id="additionalNotes"
+          placeholder="Will consider reasonable offers"
+          value={additionalNotes}
+          onChange={setAdditionalNotes}
+          isInvalid={false}
+          errorMessage=""
+          rows={5}
+          disableAutosize
+          fixedHeightClassName="h-40"
+        />
+
+        <FormField
+          label="Modifications"
+          id="modifications"
+          type="text"
+          htmlFor="modifications"
+          placeholder="Aftermarket exhaust"
+          value={modifications}
+          onChange={setModifications}
+        />
+
         <div className="space-y-2">
-          <label className="text-sm font-medium">Image URLs</label>
-
-          {imageUrls.map((url, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                type="url"
-                placeholder="https://example.com/car.jpg"
-                value={url}
-                onChange={(e) => handleImageChange(index, e.target.value)}
-                className="flex-1 border rounded px-3 py-2 text-sm"
-              />
-              {imageUrls.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeImageField(index)}
-                  className="text-red-500 text-sm"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          ))}
-
-          <button
-            type="button"
-            onClick={addImageField}
-            className="text-sm text-blue-600"
-          >
-            + Add another image
-          </button>
-
-          <p className="text-xs text-muted-foreground">
-            Paste direct image links. First image will be the cover.
-          </p>
-        </div>
-
-        {/* <div className="space-y-2">
-          <MediaUpload
-            onFileSelect={handleImagesSelect}
-            maxFiles={5}
+          <label htmlFor="files" className="text-sm font-medium">
+            Images / Videos
+          </label>
+          <input
+            id="files"
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            onChange={handleFileChange}
+            className="block w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
           />
-          {images.length > 0 && (
-            <p className="text-xs text-gray-500">
-              {images.length} image{images.length > 1 ? 's' : ''} selected.
-              The first image will be used as the cover.
+          <p className="text-xs text-muted-foreground">
+            Upload up to 10 files. They will be sent as repeated `files` fields in multipart form data.
+          </p>
+          {files.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {files.length} file{files.length > 1 ? 's' : ''} selected
             </p>
           )}
-          <p className="text-xs text-amber-600">
-            Note: Images will be uploaded to the server before creating the vehicle.
-          </p>
-        </div> */}
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <span className="font-medium">Featured Vehicle</span>
-              <p className="text-xs text-muted-foreground">
-                Display this vehicle prominently
-              </p>
-            </div>
-            <Switch isSelected={featured} onValueChange={setFeatured} />
-          </div>
-
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <span className="font-medium">Active</span>
-              <p className="text-xs text-muted-foreground">
-                Vehicle is visible to users
-              </p>
-            </div>
-            <Switch isSelected={isActive} onValueChange={setIsActive} />
-          </div>
-
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <span className="font-medium">Hidden</span>
-              <p className="text-xs text-muted-foreground">
-                Hide from public listings
-              </p>
-            </div>
-            <Switch isSelected={isHidden} onValueChange={setIsHidden} />
-          </div>
         </div>
       </div>
     </Modal>

@@ -14,13 +14,13 @@ import { showToast } from '@/lib/showNotification';
 function getRoleBasedPath(role: string | undefined): string {
   switch (role) {
     case 'SUPER_ADMIN':
-    case 'ADMIN':
+    case 'OPERATIONS_ADMIN':
+      return '/admin/dashboard';
     case 'BUYER':
-      return '/admin/dashboard';
-    case 'OPERATION':
-      return '/operations/dashboard';
+    case 'SELLER':
+      return '/unauthorized';
     default:
-      return '/admin/dashboard';
+      return '/login';
   }
 }
 
@@ -135,9 +135,6 @@ export function LoginPage() {
             </div>
           </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Forgot password? Contact system administrator</p>
-          </div>
         </CardContent>
       </Card>
     </div>
