@@ -14,6 +14,7 @@ export const API_ROUTES = {
     getUserById: (id: string) => `/admin/users/${id}`,
     createAUser: "/admin/users/create",
     deactivateUser: (id: string) => `/admin/users/${id}`,
+    updateUser: (id: string) => `/admin/users/${id}`,
     createUserLegacy: "/users/admincreate",
   },
   payments: {
@@ -24,8 +25,9 @@ export const API_ROUTES = {
       `/admin/payments/order/${orderId}`,
     initiateRefund: (paymentId: string) =>
       `/admin/payments/${paymentId}/refund`,
-    confirmPayment: (id: string) => `/admin/payments/${id}/confirm`, // payload is note: string
+    confirmPayment: (id: string) => `/admin/orders/${id}/confirm-payment`, // payload is { status: "COMPLETED", note: string }
     rejectPayment: (id: string) => `/admin/payments/${id}/reject`, // payload is note: string
+    notifySeller: (id: string) => `/admin/payments/${id}/notify-seller`,
   },
   notification: {
     notificationStat: "/admin/notifications/stats",
@@ -34,7 +36,9 @@ export const API_ROUTES = {
     markSingleAsRead: (id: string) => `/admin/notifications/${id}/read`, //patch
   },
   sellers: {
-    getASellerApplication: "/sellers/application",
+    getASellerApplication: "/sellers/applications",
+    verifySeller: (id: string) => `/sellers/applications/${id}/verify`, //patch, payload includes approve: true
+    rejectSeller: (id: string) => `/sellers/applications/${id}/verify`, //patch, payload includes approve: false
   },
   sellerVehicles: {
     getAllSellerVehicles: "/seller-vehicles",
@@ -42,6 +46,26 @@ export const API_ROUTES = {
     getSellerVehicleById: (id: string) => `/seller-vehicles/${id}`,
     deleteSellerVehicleById: (id: string) => `/seller-vehicles/${id}`,
     updateSellerVehicleById: (id: string) => `/seller-vehicles/${id}/status`,
+  },
+  vehicleDefinitions: {
+    getTrendingVehicles: "/vehicles/trending-definitions",
+    createTrendingVehicle: "/vehicles/trending-definitions",
+    updateTrendingVehicle: (id: string) =>
+      `/vehicles/trending-definitions/${id}`,
+    deleteTrendingVehicle: (id: string) =>
+      `/vehicles/trending-definitions/${id}`,
+    getRecommendedVehicles: "/vehicles/recommended-definitions",
+    createRecommendedVehicle: "/vehicles/recommended-definitions",
+    updateRecommendedVehicle: (id: string) =>
+      `/vehicles/recommended-definitions/${id}`,
+    deleteRecommendedVehicle: (id: string) =>
+      `/vehicles/recommended-definitions/${id}`,
+  },
+  vehicleCategories: {
+    getVehicleCategories: "/vehicles/admin/categories",
+    createVehicleCategory: "/vehicles/admin/categories",
+    updateVehicleCategory: (id: string) => `/vehicles/admin/categories/${id}`,
+    deleteVehicleCategory: (id: string) => `/vehicles/admin/categories/${id}`,
   },
   testimonials: {
     approveTestimonial: "/testimonial", //patch

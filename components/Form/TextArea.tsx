@@ -7,7 +7,7 @@ import { Textarea } from "@nextui-org/react";
 
 
 interface TextFieldProps {
-  label: string;
+  label?: string;
   htmlFor: string;
   id: string;
   isInvalid: boolean;

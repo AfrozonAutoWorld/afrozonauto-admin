@@ -29,7 +29,6 @@ import {
 import {
   useVehicles,
   useDeleteVehicle,
-  useToggleAvailability,
 } from '@/lib/hooks/useVehicles';
 import {
   Plus,
@@ -61,11 +60,9 @@ export function CarsListingPage() {
 
   const { data, isLoading } = useVehicles(filters);
   const deleteVehicle = useDeleteVehicle();
-  const toggleAvailability = useToggleAvailability();
   const canManageVehicles =
     session?.user.role === 'SUPER_ADMIN' ||
     session?.user.role === 'OPERATIONS_ADMIN';
-  const vehicleStatuses = ['AVAILABLE', 'PENDING', 'RESERVED', 'SOLD'] as const;
 
   const vehicles = data?.items || [];
   const meta = data?.meta;
@@ -88,11 +85,6 @@ export function CarsListingPage() {
       onSuccess: () => setVehicleToDelete(null),
     });
   };
-
-  const handleStatusUpdate = (id: string, status: (typeof vehicleStatuses)[number]) => {
-    toggleAvailability.mutate({ id, status });
-  };
-
 
   function getPrimaryImage(vehicle: Vehicle): string {
     const fallbackImage = 'https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg?auto=compress&cs=tinysrgb&w=800';
@@ -255,19 +247,6 @@ export function CarsListingPage() {
                                 </DropdownMenuItem>
                                 {canManageVehicles && (
                                   <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuLabel>Update Status</DropdownMenuLabel>
-                                    {vehicleStatuses
-                                      .filter((status) => status !== vehicle.status)
-                                      .map((status) => (
-                                        <DropdownMenuItem
-                                          key={status}
-                                          onClick={() => handleStatusUpdate(vehicle.id, status)}
-                                          disabled={toggleAvailability.isPending}
-                                        >
-                                          Mark as {status.replace('_', ' ')}
-                                        </DropdownMenuItem>
-                                      ))}
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       onClick={() => handleDelete(

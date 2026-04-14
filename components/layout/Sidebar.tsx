@@ -60,10 +60,24 @@ const buildMenuItems = (role?: string): MenuItem[] => {
       roles: adminRoles,
     },
     {
-      title: 'Seller Vehicles',
-      href: `${basePath}/seller-vehicles`,
+      title: 'Vehicles',
+      href: `${basePath}/vehicles`,
       icon: Car,
       roles: adminRoles,
+      children: [
+        {
+          title: 'Seller Vehicles',
+          href: `${basePath}/seller-vehicles`,
+        },
+        {
+          title: 'Trending Vehicles',
+          href: `${basePath}/vehicles/trending`,
+        },
+        {
+          title: 'Recommended Vehicles',
+          href: `${basePath}/vehicles/recommended`,
+        },
+      ],
     },
     {
       title: 'Orders',
@@ -129,8 +143,16 @@ function SidebarContent({
         {menuItems.map((item) => {
           const Icon = item.icon;
           const hasChildren = !!item.children?.length;
+          const isChildRouteActive =
+            item.children?.some(
+              (child) =>
+                pathname === child.href ||
+                pathname.startsWith(child.href + '/'),
+            ) ?? false;
           const isActive =
-            pathname === item.href || pathname.startsWith(item.href + '/');
+            pathname === item.href ||
+            pathname.startsWith(item.href + '/') ||
+            isChildRouteActive;
           const isExpanded = expandedMenus[item.href] || isActive;
 
           return (
@@ -179,7 +201,9 @@ function SidebarContent({
               {hasChildren && isExpanded && (
                 <div className="ml-7 mt-1 space-y-1">
                   {item.children!.map((child) => {
-                    const isChildActive = pathname === child.href;
+                    const childActive =
+                      pathname === child.href ||
+                      pathname.startsWith(child.href + '/');
 
                     return (
                       <Link
@@ -188,7 +212,7 @@ function SidebarContent({
                         onClick={onLinkClick}
                         className={cn(
                           'block rounded-md px-3 py-1.5 text-sm transition-colors cursor-pointer',
-                          isChildActive
+                          childActive
                             ? 'bg-emerald-100 text-emerald-700'
                             : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                         )}

@@ -21,8 +21,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useUsers, useToggleUserStatus } from '@/lib/hooks/useUsers';
-import { MoreVertical, User, Eye, Users, UserPlus } from 'lucide-react';
+import {
+  useApproveSellerAccount,
+  useUsers,
+  useToggleUserStatus,
+} from '@/lib/hooks/useUsers';
+import { MoreVertical, User, Eye, Users, UserPlus, BadgeCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { AddUserModal } from '@/components/users/AddUserModal';
 import { useRouter } from 'next/navigation';
@@ -32,27 +36,46 @@ export function UsersPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const canManageUserStatus = session?.user.role === 'SUPER_ADMIN';
+  const canManageSellerReview =
+    session?.user.role === 'SUPER_ADMIN' ||
+    session?.user.role === 'OPERATIONS_ADMIN';
+  const limit = 10;
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [sellerConfirmOpen, setSellerConfirmOpen] = useState(false);
+  const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const limit = 10;
   const { data, isLoading } = useUsers({
     page,
     limit,
-    //search: searchQuery.trim() || undefined,
   });
   const [addUserModal, setAddUserModal] = useState(false);
 
   const toggleStatus = useToggleUserStatus();
+  const approveSellerAccount = useApproveSellerAccount();
 
   const users = data?.items || [];
   const meta = data?.meta;
   const totalPages = meta?.pages ?? 1;
 
+  const getRawSellerStatusForUser = (user: (typeof users)[number]) =>
+    (
+      user.sellerStatus ??
+      (user.role === 'SELLER' ? 'pending' : 'not_applied')
+    ).toLowerCase();
+
+  const getSellerStatusForUser = (user: (typeof users)[number]) =>
+    `seller_${getRawSellerStatusForUser(user)}`;
+
   const handleToggleStatus = (userId: string) => {
     setSelectedUserId(userId);
     setConfirmOpen(true);
+  };
+
+  const handleConfirmSeller = (userId: string) => {
+    setSelectedSellerId(userId);
+    setSellerConfirmOpen(true);
   };
 
   const confirmToggleStatus = () => {
@@ -63,14 +86,35 @@ export function UsersPage() {
     }
   };
 
+  const confirmSellerApproval = () => {
+    if (!selectedSellerId) return;
+
+    const selectedSeller = users.find((user) => user.id === selectedSellerId);
+    if (!selectedSeller) return;
+
+    approveSellerAccount.mutate(
+      {
+        userId: selectedSeller.id,
+        profileId: selectedSeller.profileId,
+      },
+      {
+        onSuccess: () => {
+          setSellerConfirmOpen(false);
+          setSelectedSellerId(null);
+        },
+      },
+    );
+  };
+
   const selectedUser = users?.find(u => u.id === selectedUserId);
+  const selectedSeller = users?.find((user) => user.id === selectedSellerId);
 
   return (
     <>
       <div>
         <Header
           title="Users"
-
+          description="Manage all platform users."
         />
 
         <div className="p-6 space-y-6">
@@ -129,6 +173,7 @@ export function UsersPage() {
                       <TableHead>Contact</TableHead>
                       <TableHead>Country</TableHead>
                       <TableHead>Role</TableHead>
+                      <TableHead>Seller Review</TableHead>
                       <TableHead>Orders</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Joined</TableHead>
@@ -164,6 +209,9 @@ export function UsersPage() {
                           <StatusBadge status={user.role} />
                         </TableCell>
                         <TableCell>
+                          <StatusBadge status={getSellerStatusForUser(user)} />
+                        </TableCell>
+                        <TableCell>
                           <span className="font-medium">{user.totalOrders}</span>
                         </TableCell>
                         <TableCell>
@@ -189,10 +237,20 @@ export function UsersPage() {
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Profile
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => router.push(`/admin/users/${user.id}/orders`)}>
-                                <User className="mr-2 h-4 w-4" />
-                                View Orders
-                              </DropdownMenuItem>
+                              {user.role === 'BUYER' && (
+                                <DropdownMenuItem onClick={() => router.push(`/admin/users/${user.id}/orders`)}>
+                                  <User className="mr-2 h-4 w-4" />
+                                  View Orders
+                                </DropdownMenuItem>
+                              )}
+                              {canManageSellerReview &&
+                                user.role === 'SELLER' &&
+                                getRawSellerStatusForUser(user) !== 'approved' && (
+                                  <DropdownMenuItem onClick={() => handleConfirmSeller(user.id)}>
+                                    <BadgeCheck className="mr-2 h-4 w-4" />
+                                    Confirm Seller
+                                  </DropdownMenuItem>
+                                )}
                               {canManageUserStatus && (
                                 <>
                                   <DropdownMenuSeparator />
@@ -280,6 +338,27 @@ export function UsersPage() {
           confirmText={selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'}
         />
       )}
+
+      <ConfirmModal
+        open={sellerConfirmOpen}
+        onOpenChange={(open) => {
+          setSellerConfirmOpen(open);
+
+          if (!open) {
+            setSelectedSellerId(null);
+          }
+        }}
+        title="Confirm Seller"
+        description="This will verify the seller profile using its ID only."
+        message={
+          selectedSeller
+            ? `Are you sure you want to confirm ${selectedSeller.name} as a seller?`
+            : 'Are you sure you want to confirm this seller?'
+        }
+        onConfirm={confirmSellerApproval}
+        isLoading={approveSellerAccount.isPending}
+        confirmText="Confirm Seller"
+      />
 
     </>
   );

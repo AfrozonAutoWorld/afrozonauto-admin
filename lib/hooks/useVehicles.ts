@@ -149,24 +149,3 @@ export const useToggleFeatured = () => {
     },
   });
 };
-
-// Toggle availability status
-export const useToggleAvailability = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<
-    Vehicle,
-    AxiosError<{ message?: string }>,
-    { id: string; status: string }
-  >({
-    mutationFn: ({ id, status }) => vehicleQueries.updateVehicle(id, { status }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(variables.id) });
-      toast.success("Vehicle availability updated!");
-    },
-    onError: (error) => {
-      toast.error(error?.response?.data?.message || "Failed to update availability");
-    },
-  });
-};

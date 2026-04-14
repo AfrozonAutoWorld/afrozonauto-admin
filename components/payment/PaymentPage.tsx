@@ -34,8 +34,14 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { TextAreaField } from '@/components/Form';
-import { usePayments, useInitiateRefund, useConfirmPayment, useRejectPayment } from '@/lib/hooks';
-import { CreditCard, DollarSign, MoreVertical, Search } from 'lucide-react';
+import {
+  usePayments,
+  useInitiateRefund,
+  useConfirmPayment,
+  useRejectPayment,
+  useNotifySellerPaymentCompleted,
+} from '@/lib/hooks';
+import { CreditCard, DollarSign, Eye, MoreVertical, Search } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function PaymentsPage() {
@@ -48,6 +54,8 @@ export default function PaymentsPage() {
   const [reviewAction, setReviewAction] = useState<'confirm' | 'reject' | null>(null);
   const [reviewPaymentId, setReviewPaymentId] = useState<string | null>(null);
   const [reviewNote, setReviewNote] = useState('');
+  const [notifyModalOpen, setNotifyModalOpen] = useState(false);
+  const [notifyPaymentId, setNotifyPaymentId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const limit = 10;
 
@@ -58,8 +66,9 @@ export default function PaymentsPage() {
     status: statusFilter !== 'ALL' ? statusFilter : undefined,
   });
   const initiateRefund = useInitiateRefund();
-  const confirmPayment = useConfirmPayment();
+  const approvePayment = useConfirmPayment();
   const rejectPayment = useRejectPayment();
+  const notifySeller = useNotifySellerPaymentCompleted();
 
   const payments = data?.items || [];
   const totalPages = data?.meta.pages ?? 1;
@@ -74,6 +83,11 @@ export default function PaymentsPage() {
     setReviewAction(action);
     setReviewNote('');
     setReviewModalOpen(true);
+  };
+
+  const handleNotifySeller = (paymentId: string) => {
+    setNotifyPaymentId(paymentId);
+    setNotifyModalOpen(true);
   };
 
   const confirmRefund = () => {
@@ -97,16 +111,44 @@ export default function PaymentsPage() {
   const submitReviewAction = () => {
     if (!reviewPaymentId || !reviewAction || !reviewNote.trim()) return;
 
-    const payload = { paymentId: reviewPaymentId, note: reviewNote.trim() };
-    const mutation = reviewAction === 'confirm' ? confirmPayment : rejectPayment;
+    if (reviewAction === 'confirm') {
+      // approvePayment expects orderId
+      const orderId = reviewPayment?.orderId;
+      if (!orderId) return;
+      approvePayment.mutate({ orderId, note: reviewNote.trim() }, {
+        onSuccess: async () => {
+          await refetch();
+          setReviewModalOpen(false);
+          setReviewPaymentId(null);
+          setReviewAction(null);
+          setReviewNote('');
+        },
+      });
+    } else {
+      // rejectPayment expects paymentId
+      const payload = { paymentId: reviewPaymentId, note: reviewNote.trim() };
+      rejectPayment.mutate(payload, {
+        onSuccess: async () => {
+          await refetch();
+          setReviewModalOpen(false);
+          setReviewPaymentId(null);
+          setReviewAction(null);
+          setReviewNote('');
+        },
+      });
+    }
+  };
 
-    mutation.mutate(payload, {
+  const submitNotifySeller = () => {
+    if (!notifyPaymentId) return;
+
+    const vehicleId = notifyPayment?.order?.vehicleId ?? null;
+
+    notifySeller.mutate({ paymentId: notifyPaymentId, vehicleId }, {
       onSuccess: async () => {
         await refetch();
-        setReviewModalOpen(false);
-        setReviewPaymentId(null);
-        setReviewAction(null);
-        setReviewNote('');
+        setNotifyModalOpen(false);
+        setNotifyPaymentId(null);
       },
     });
   };
@@ -124,10 +166,14 @@ export default function PaymentsPage() {
 
   const payment = payments.find(p => p.id === selectedPayment);
   const reviewPayment = payments.find(p => p.id === reviewPaymentId);
+  const notifyPayment = payments.find(p => p.id === notifyPaymentId);
   const refundMessage = payment
     ? `Are you sure you want to refund $${payment.amount.toLocaleString()} for transaction ${payment.transactionId}? This action cannot be undone.`
     : 'Select a payment to refund.';
-  const isReviewSubmitting = confirmPayment.isPending || rejectPayment.isPending;
+  const notifyMessage = notifyPayment
+    ? `Send the seller notification for completed payment ${notifyPayment.transactionId}? This will trigger both email and in-app notification${notifyPayment.order?.vehicleId ? ' and mark the vehicle as sold.' : '.'}`
+    : 'Select a completed payment to notify the seller.';
+  const isReviewSubmitting = approvePayment.isPending || rejectPayment.isPending;
 
   return (
     <div>
@@ -206,13 +252,13 @@ export default function PaymentsPage() {
                 <label htmlFor="payment-status" className="text-sm font-medium text-slate-700">
                   Status
                 </label>
-              <Select
-                value={statusFilter}
-                onValueChange={(value) => {
-                  setStatusFilter(value);
-                  setPage(1);
-                }}
-              >
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value) => {
+                    setStatusFilter(value);
+                    setPage(1);
+                  }}
+                >
                   <SelectTrigger
                     id="payment-status"
                     className="h-11 w-full rounded-lg border-slate-200 bg-white shadow-none focus-visible:ring-2 focus-visible:ring-emerald-500/20"
@@ -290,7 +336,7 @@ export default function PaymentsPage() {
                           {format(new Date(payment.createdAt), 'MMM d, yyyy HH:mm')}
                         </TableCell>
                         <TableCell>
-                          {(payment.status === 'pending' || payment.status === 'completed') && (
+                          <div className="space-y-2">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button
@@ -300,15 +346,20 @@ export default function PaymentsPage() {
                                   <MoreVertical className="h-4 w-4" />
                                 </button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuContent align="end" className="w-48">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => router.push(`/admin/payments/${payment.id}`)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
                                 {payment.status === 'pending' && (
                                   <>
+                                    <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       onClick={() => handleReviewAction(payment.id, 'confirm')}
                                     >
-                                      Confirm
+                                      Approve
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handleReviewAction(payment.id, 'reject')}
@@ -319,18 +370,26 @@ export default function PaymentsPage() {
                                   </>
                                 )}
                                 {payment.status === 'completed' && (
-                                  <DropdownMenuItem onClick={() => handleRefundClick(payment.id)}>
-                                    Refund
-                                  </DropdownMenuItem>
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    {payment.order?.vehicleId && (
+                                      <DropdownMenuItem onClick={() => handleNotifySeller(payment.id)}>
+                                        Notify Seller
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onClick={() => handleRefundClick(payment.id)}>
+                                      Refund
+                                    </DropdownMenuItem>
+                                  </>
                                 )}
                               </DropdownMenuContent>
                             </DropdownMenu>
-                          )}
-                          {payment.status === 'refunded' && payment.refundedAt && (
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(payment.refundedAt), 'MMM d, yyyy')}
-                            </span>
-                          )}
+                            {payment.status === 'refunded' && payment.refundedAt && (
+                              <span className="block text-xs text-muted-foreground">
+                                {format(new Date(payment.refundedAt), 'MMM d, yyyy')}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -390,6 +449,22 @@ export default function PaymentsPage() {
         confirmText="Process Refund"
       />
 
+      <ConfirmModal
+        open={notifyModalOpen}
+        onOpenChange={(open) => {
+          setNotifyModalOpen(open);
+          if (!open) {
+            setNotifyPaymentId(null);
+          }
+        }}
+        title="Notify Seller"
+        description="Send payment completed notification"
+        message={notifyMessage}
+        onConfirm={submitNotifySeller}
+        isLoading={notifySeller.isPending}
+        confirmText="Send Notification"
+      />
+
       <Modal
         open={reviewModalOpen}
         onOpenChange={(open) => {
@@ -400,35 +475,33 @@ export default function PaymentsPage() {
             setReviewNote('');
           }
         }}
-        title={reviewAction === 'confirm' ? 'Confirm Payment' : 'Reject Payment'}
+        title={reviewAction === 'confirm' ? 'Approve Payment' : 'Reject Payment'}
         description={
           reviewPayment
             ? `Add an internal note for transaction ${reviewPayment.transactionId}.`
-            : 'Add an internal note for this payment action.'
+            : ''
         }
         showFooter
         onConfirm={submitReviewAction}
-        confirmText={reviewAction === 'confirm' ? 'Confirm Payment' : 'Reject Payment'}
+        confirmText={reviewAction === 'confirm' ? 'Approve Payment' : 'Reject Payment'}
         isLoading={isReviewSubmitting}
       >
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            A note is required before this payment can be {reviewAction === 'confirm' ? 'confirmed' : 'rejected'}.
-          </p>
+
           <TextAreaField
-            label="Note"
+            //label="Note"
             htmlFor="payment-review-note"
             id="payment-review-note"
             placeholder={
               reviewAction === 'confirm'
-                ? 'Explain why this payment is being confirmed'
+                ? 'Explain why this payment is being approved'
                 : 'Explain why this payment is being rejected'
             }
             value={reviewNote}
             onChange={setReviewNote}
             isInvalid={!reviewNote.trim() && isReviewSubmitting}
             errorMessage="Note is required"
-            required
+            //required
             disableAutosize
             fixedHeightClassName="h-36"
           />

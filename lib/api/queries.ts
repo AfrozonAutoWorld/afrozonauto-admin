@@ -614,13 +614,4 @@ export const vehicleQueries = {
     const responsePayload = unwrapApiData(response.data);
     return pickVehicleEntity(responsePayload);
   },
-
-  // Toggle availability
-  toggleAvailability: async (id: string): Promise<Vehicle> => {
-    const response = await apiClient.patch<ApiResponse<unknown>>(
-      API_ROUTES.sellerVehicles.updateSellerVehicleById(id),
-    );
-    const responsePayload = unwrapApiData(response.data);
-    return pickVehicleEntity(responsePayload);
-  },
 };
