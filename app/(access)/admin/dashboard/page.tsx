@@ -39,10 +39,7 @@ export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: activities, isLoading: activitiesLoading } = useRecentActivities();
   const { data: pendingData, isLoading: ordersLoading } = usePendingOrders({ limit: 5, page: 1 });
-  const orders = pendingData?.items || [];
-
-  // Get pending orders
-  const pendingOrders = orders.filter(order => order.status === 'pending').slice(0, 5);
+  const pendingOrders = pendingData?.items || [];
 
 
   const getActivityIcon = (type: string) => {
