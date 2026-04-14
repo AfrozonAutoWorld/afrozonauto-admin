@@ -25,7 +25,7 @@ export const API_ROUTES = {
       `/admin/payments/order/${orderId}`,
     initiateRefund: (paymentId: string) =>
       `/admin/payments/${paymentId}/refund`,
-    confirmPayment: (id: string) => `/admin/payments/${id}/confirm`, // payload is { status: "COMPLETED", note: string }
+    confirmPayment: (id: string) => `/admin/orders/${id}/confirm-payment`, // payload is { status: "COMPLETED", note: string }
     rejectPayment: (id: string) => `/admin/payments/${id}/reject`, // payload is note: string
     notifySeller: (id: string) => `/admin/payments/${id}/notify-seller`,
   },

@@ -168,13 +168,13 @@ export function useConfirmPayment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ paymentId, note }: { paymentId: string; note: string }) =>
-      apiClient.patch(API_ROUTES.payments.confirmPayment(paymentId), {
+    mutationFn: ({ orderId, note }: { orderId: string; note: string }) =>
+      apiClient.patch(API_ROUTES.payments.confirmPayment(orderId), {
         status: "COMPLETED",
         note,
       }),
     onSuccess: async (_, variables) => {
-      await refreshPaymentQueries(queryClient, variables.paymentId);
+      await refreshPaymentQueries(queryClient, variables.orderId);
       toast.success("Payment approved successfully");
     },
     onError: () => {
@@ -248,9 +248,7 @@ export function useNotifySellerPaymentCompleted() {
       );
     },
     onError: (error: AxiosError<{ message?: string }>) => {
-      toast.error(
-        error.response?.data?.message || "Failed to notify seller",
-      );
+      toast.error(error.response?.data?.message || "Failed to notify seller");
     },
   });
 }

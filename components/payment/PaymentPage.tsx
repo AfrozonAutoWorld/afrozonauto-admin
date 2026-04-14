@@ -111,18 +111,32 @@ export default function PaymentsPage() {
   const submitReviewAction = () => {
     if (!reviewPaymentId || !reviewAction || !reviewNote.trim()) return;
 
-    const payload = { paymentId: reviewPaymentId, note: reviewNote.trim() };
-    const mutation = reviewAction === 'confirm' ? approvePayment : rejectPayment;
-
-    mutation.mutate(payload, {
-      onSuccess: async () => {
-        await refetch();
-        setReviewModalOpen(false);
-        setReviewPaymentId(null);
-        setReviewAction(null);
-        setReviewNote('');
-      },
-    });
+    if (reviewAction === 'confirm') {
+      // approvePayment expects orderId
+      const orderId = reviewPayment?.orderId;
+      if (!orderId) return;
+      approvePayment.mutate({ orderId, note: reviewNote.trim() }, {
+        onSuccess: async () => {
+          await refetch();
+          setReviewModalOpen(false);
+          setReviewPaymentId(null);
+          setReviewAction(null);
+          setReviewNote('');
+        },
+      });
+    } else {
+      // rejectPayment expects paymentId
+      const payload = { paymentId: reviewPaymentId, note: reviewNote.trim() };
+      rejectPayment.mutate(payload, {
+        onSuccess: async () => {
+          await refetch();
+          setReviewModalOpen(false);
+          setReviewPaymentId(null);
+          setReviewAction(null);
+          setReviewNote('');
+        },
+      });
+    }
   };
 
   const submitNotifySeller = () => {

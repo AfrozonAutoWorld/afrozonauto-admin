@@ -420,8 +420,21 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
           </Card>
 
           <Card className="xl:col-span-3">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Payments</CardTitle>
+              {order.payments.some((p) => p.status === 'completed') && (
+                <CustomBtn
+                  icon={BellRing}
+                  onClick={() => {
+                    const firstCompletedPayment = order.payments.find((p) => p.status === 'completed');
+                    if (firstCompletedPayment) setNotifyPaymentId(firstCompletedPayment.id);
+                  }}
+                  isLoading={notifySeller.isPending}
+                  className="bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  Notify Seller
+                </CustomBtn>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               {order.payments.length > 0 ? (
@@ -462,17 +475,6 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                           <p className="font-medium">{formatDateTime(payment.adminConfirmedAt)}</p>
                         </div>
                       </div>
-
-                      {payment.status === 'completed' && (
-                        <CustomBtn
-                          icon={BellRing}
-                          onClick={() => setNotifyPaymentId(payment.id)}
-                          isLoading={notifySeller.isPending && notifyPaymentId === payment.id}
-                          className="bg-emerald-600 text-white hover:bg-emerald-700"
-                        >
-                          Notify Seller
-                        </CustomBtn>
-                      )}
                     </div>
 
                     {payment.adminNote && (
