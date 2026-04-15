@@ -3,15 +3,16 @@
 import { use, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { format } from 'date-fns';
 import {
   ArrowLeft,
-  Ban,
   BellRing,
   FileText,
   MapPin,
   Package,
   ShoppingCart,
+  Trash2,
   User,
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
@@ -24,7 +25,7 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { TextAreaField } from '@/components/Form';
 import {
   useAddOrderNote,
-  useCancelOrder,
+  useDeleteOrder,
   useOrder,
 } from '@/lib/hooks/useOrders';
 import { useNotifySellerPaymentCompleted } from '@/lib/hooks/usePayment';
@@ -52,22 +53,22 @@ const formatLabel = (value: string) =>
 
 export default function OrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { data: session } = useSession();
   const resolvedParams = use(params);
 
   const { data: order, isLoading } = useOrder(resolvedParams.id);
   const addOrderNote = useAddOrderNote();
-  const cancelOrder = useCancelOrder();
+  const deleteOrder = useDeleteOrder();
   const notifySeller = useNotifySellerPaymentCompleted();
 
   const [note, setNote] = useState('');
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [notifyPaymentId, setNotifyPaymentId] = useState<string | null>(null);
 
   const selectedPayment = useMemo(
     () => order?.payments.find((payment) => payment.id === notifyPaymentId) ?? null,
     [order?.payments, notifyPaymentId],
   );
-  const isCancelled = (order?.status ?? '').toUpperCase() === 'CANCELLED';
 
   const handleAddNote = () => {
     const trimmedNote = note.trim();
@@ -81,9 +82,9 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
     );
   };
 
-  const handleCancelOrder = () => {
-    cancelOrder.mutate(resolvedParams.id, {
-      onSuccess: () => setShowCancelConfirm(false),
+  const handleDeleteOrder = () => {
+    deleteOrder.mutate(resolvedParams.id, {
+      onSuccess: () => setDeleteTarget(null),
     });
   };
 
@@ -558,14 +559,16 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                 >
                   Save Note
                 </CustomBtn>
-                <CustomBtn
-                  variant="bordered"
-                  icon={Ban}
-                  onClick={() => setShowCancelConfirm(true)}
-                  isDisabled={isCancelled}
-                >
-                  {isCancelled ? 'Order Cancelled' : 'Cancel Order'}
-                </CustomBtn>
+                {session?.user?.role === 'SUPER_ADMIN' && (
+                  <CustomBtn
+                    variant="ghost"
+                    icon={Trash2}
+                    onClick={() => setDeleteTarget(resolvedParams.id)}
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    Delete Order
+                  </CustomBtn>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -573,15 +576,19 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
       </div>
 
       <ConfirmModal
-        open={showCancelConfirm}
-        onOpenChange={setShowCancelConfirm}
-        title="Cancel Order"
-        description="This will cancel the order and prevent further processing."
-        message={`Are you sure you want to cancel order ${order.requestNumber || order.id}?`}
-        onConfirm={handleCancelOrder}
-        isLoading={cancelOrder.isPending}
-        confirmText="Cancel Order"
-        variant="warning"
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+          }
+        }}
+        title="Delete Order"
+        description="This action cannot be undone. The order will be permanently deleted from the system."
+        message={`Are you sure you want to delete order ${order?.requestNumber || order?.id}?`}
+        onConfirm={handleDeleteOrder}
+        isLoading={deleteOrder.isPending}
+        confirmText="Delete Order"
+        variant="destructive"
       />
 
       <ConfirmModal

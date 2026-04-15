@@ -184,3 +184,22 @@ export function useCancelOrder() {
     },
   });
 }
+
+export function useDeleteOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (orderId: string) =>
+      apiClient.delete(API_ROUTES.orders.deleteOrder(orderId)),
+    onSuccess: (_, orderId) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders", orderId] });
+      queryClient.invalidateQueries({ queryKey: ["orders", "pending"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Order deleted successfully");
+    },
+    onError: () => {
+      toast.error("Failed to delete order");
+    },
+  });
+}

@@ -201,9 +201,20 @@ function SidebarContent({
               {hasChildren && isExpanded && (
                 <div className="ml-7 mt-1 space-y-1">
                   {item.children!.map((child) => {
-                    const childActive =
+                    // Check if pathname exactly matches or is under this child
+                    const isDirectMatch =
                       pathname === child.href ||
                       pathname.startsWith(child.href + '/');
+
+                    // Check if another sibling provides a more specific match
+                    const hasMoreSpecificSibling =
+                      item.children!.some(sibling =>
+                        sibling.href !== child.href && // Different sibling
+                        sibling.href.startsWith(child.href + '/') && // Sibling is more specific
+                        (pathname === sibling.href || pathname.startsWith(sibling.href + '/'))
+                      );
+
+                    const childActive = isDirectMatch && !hasMoreSpecificSibling;
 
                     return (
                       <Link
