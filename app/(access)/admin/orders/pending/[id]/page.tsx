@@ -2,26 +2,27 @@
 
 import { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CustomBtn } from '@/components/shared/CustomBtn';
 import { ConfirmModal } from '@/components/shared/ConfirmModal';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
-import { useAddOrderNote, useCancelOrder, useOrder } from '@/lib/hooks/useOrders';
-import { ArrowLeft, Ban, FileText, User } from 'lucide-react';
+import { useAddOrderNote, useDeleteOrder, useOrder } from '@/lib/hooks/useOrders';
+import { ArrowLeft, FileText, Trash2, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { TextAreaField } from '@/components/Form';
 
 export default function PendingOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
+  const { data: session } = useSession();
   const { data: order, isLoading } = useOrder(resolvedParams.id);
   const addOrderNote = useAddOrderNote();
-  const cancelOrder = useCancelOrder();
+  const deleteOrder = useDeleteOrder();
   const [note, setNote] = useState('');
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const isCancelled = (order?.status ?? '').toUpperCase() === 'CANCELLED';
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const handleAddNote = () => {
     const trimmedNote = note.trim();
@@ -35,9 +36,9 @@ export default function PendingOrderDetailPage({ params }: { params: Promise<{ i
     );
   };
 
-  const handleCancelOrder = () => {
-    cancelOrder.mutate(resolvedParams.id, {
-      onSuccess: () => setShowCancelConfirm(false),
+  const handleDeleteOrder = () => {
+    deleteOrder.mutate(resolvedParams.id, {
+      onSuccess: () => setDeleteTarget(null),
     });
   };
 
@@ -190,14 +191,16 @@ export default function PendingOrderDetailPage({ params }: { params: Promise<{ i
                 >
                   Save Note
                 </CustomBtn>
-                <CustomBtn
-                  variant="bordered"
-                  icon={Ban}
-                  onClick={() => setShowCancelConfirm(true)}
-                  isDisabled={isCancelled}
-                >
-                  {isCancelled ? 'Order Cancelled' : 'Cancel Order'}
-                </CustomBtn>
+                {session?.user?.role === 'SUPER_ADMIN' && (
+                  <CustomBtn
+                    variant="ghost"
+                    icon={Trash2}
+                    onClick={() => setDeleteTarget(resolvedParams.id)}
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    Delete Order
+                  </CustomBtn>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -205,15 +208,19 @@ export default function PendingOrderDetailPage({ params }: { params: Promise<{ i
       </div>
 
       <ConfirmModal
-        open={showCancelConfirm}
-        onOpenChange={setShowCancelConfirm}
-        title="Cancel Order"
-        description="This will cancel the pending order"
-        message={`Are you sure you want to cancel order ${order.id}?`}
-        onConfirm={handleCancelOrder}
-        isLoading={cancelOrder.isPending}
-        confirmText="Cancel Order"
-        variant="warning"
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+          }
+        }}
+        title="Delete Order"
+        description="This action cannot be undone. The order will be permanently deleted from the system."
+        message={`Are you sure you want to delete order ${order?.id}?`}
+        onConfirm={handleDeleteOrder}
+        isLoading={deleteOrder.isPending}
+        confirmText="Delete Order"
+        variant="destructive"
       />
     </div>
   );

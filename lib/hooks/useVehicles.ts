@@ -141,11 +141,68 @@ export const useToggleFeatured = () => {
       vehicleQueries.updateVehicle(id, { featured }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: vehicleKeys.detail(variables.id),
+      });
       toast.success("Vehicle featured status updated!");
     },
     onError: (error) => {
-      toast.error(error?.response?.data?.message || "Failed to update featured");
+      toast.error(
+        error?.response?.data?.message || "Failed to update featured",
+      );
+    },
+  });
+};
+
+// Add vehicle to section (RECOMMENDED or TRENDING)
+export const useAddVehicleToSection = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    AxiosError<{ message?: string }>,
+    { id: string; section: "RECOMMENDED" | "TRENDING" | "SPECIALTY" }
+  >({
+    mutationFn: ({ id, section }) =>
+      vehicleQueries.addVehicleToSection(id, section),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: vehicleKeys.detail(variables.id),
+      });
+      toast.success(`Vehicle added to ${variables.section} section!`);
+    },
+    onError: (error) => {
+      toast.error(
+        error?.response?.data?.message || "Failed to add vehicle to section",
+      );
+    },
+  });
+};
+
+// Remove vehicle from section
+export const useRemoveVehicleFromSection = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    AxiosError<{ message?: string }>,
+    { id: string; section: "RECOMMENDED" | "TRENDING" | "SPECIALTY" }
+  >({
+    mutationFn: ({ id, section }) =>
+      vehicleQueries.removeVehicleFromSection(id, section),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: vehicleKeys.detail(variables.id),
+      });
+      toast.success(`Vehicle removed from ${variables.section} section!`);
+    },
+    onError: (error) => {
+      toast.error(
+        error?.response?.data?.message ||
+          "Failed to remove vehicle from section",
+      );
     },
   });
 };

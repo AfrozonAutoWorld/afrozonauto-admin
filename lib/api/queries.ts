@@ -6,7 +6,15 @@ import { unwrapApiData, type ApiResponse } from "./response";
 type TransmissionType = "Automatic" | "Manual";
 type FuelType = "Hybrid" | "Regular Unleaded" | "Diesel" | "Electric";
 type DrivetrainType = "FWD" | "RWD" | "AWD" | "4WD";
-type VehicleStatus = "AVAILABLE" | "SOLD" | "PENDING" | "RESERVED";
+type VehicleStatus =
+  | "AVAILABLE"
+  | "SOLD"
+  | "PENDING"
+  | "RESERVED"
+  | "PENDING_REVIEW"
+  | "REVIEWING"
+  | "APPROVED"
+  | "REJECTED";
 type ApiSyncStatus = "PENDING" | "SYNCED" | "FAILED";
 type VehicleSource = "API" | "MANUAL";
 
@@ -149,6 +157,7 @@ export interface Vehicle {
   driveType?: string;
   doors?: number;
   seats?: number;
+  sections?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -216,14 +225,17 @@ const normalizeVehicleType = (value: unknown): VehicleType => {
 
 const normalizeVehicleStatus = (value: unknown): VehicleStatus => {
   const normalized = getString(value).toUpperCase();
-  if (
-    normalized === "SOLD" ||
-    normalized === "PENDING" ||
-    normalized === "RESERVED"
-  ) {
-    return normalized as VehicleStatus;
-  }
-  return "AVAILABLE";
+  const valid: VehicleStatus[] = [
+    "AVAILABLE",
+    "SOLD",
+    "PENDING",
+    "RESERVED",
+    "PENDING_REVIEW",
+    "REVIEWING",
+    "APPROVED",
+    "REJECTED",
+  ];
+  return (valid.find((s) => s === normalized) ?? "AVAILABLE") as VehicleStatus;
 };
 
 const normalizeDriveType = (value: unknown): DrivetrainType => {
@@ -445,6 +457,9 @@ const normalizeVehicleEntity = (rawValue: unknown): Vehicle => {
     driveType: getString(record.driveType, record.drivetrain) || undefined,
     doors: getNumber(record.doors) || undefined,
     seats: getNumber(record.seats) || undefined,
+    sections: Array.isArray(record.sections)
+      ? (record.sections as string[])
+      : [],
     createdAt: getString(
       record.createdAt,
       nestedVehicle?.createdAt,
@@ -613,5 +628,28 @@ export const vehicleQueries = {
     );
     const responsePayload = unwrapApiData(response.data);
     return pickVehicleEntity(responsePayload);
+  },
+
+  // Add vehicle to section (RECOMMENDED or TRENDING)
+  addVehicleToSection: async (
+    id: string,
+    section: "RECOMMENDED" | "TRENDING" | "SPECIALTY",
+  ): Promise<void> => {
+    await apiClient.post(
+      API_ROUTES.vehicleDefinitions.addVehicletoSection(id),
+      {
+        section,
+      },
+    );
+  },
+
+  // Remove vehicle from section
+  removeVehicleFromSection: async (
+    id: string,
+    section: "RECOMMENDED" | "TRENDING" | "SPECIALTY",
+  ): Promise<void> => {
+    await apiClient.delete(
+      API_ROUTES.vehicleDefinitions.removeVehicleFromSection(id, section),
+    );
   },
 };

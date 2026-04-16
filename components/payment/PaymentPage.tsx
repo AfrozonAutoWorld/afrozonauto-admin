@@ -38,6 +38,7 @@ import {
   usePayments,
   useInitiateRefund,
   useConfirmPayment,
+  useConfirmSinglePayment,
   useRejectPayment,
   useNotifySellerPaymentCompleted,
 } from '@/lib/hooks';
@@ -66,7 +67,8 @@ export default function PaymentsPage() {
     status: statusFilter !== 'ALL' ? statusFilter : undefined,
   });
   const initiateRefund = useInitiateRefund();
-  const approvePayment = useConfirmPayment();
+  const confirmSinglePayment = useConfirmSinglePayment();
+  const confirmOrderPayments = useConfirmPayment();
   const rejectPayment = useRejectPayment();
   const notifySeller = useNotifySellerPaymentCompleted();
 
@@ -112,18 +114,53 @@ export default function PaymentsPage() {
     if (!reviewPaymentId || !reviewAction || !reviewNote.trim()) return;
 
     if (reviewAction === 'confirm') {
-      // approvePayment expects orderId
-      const orderId = reviewPayment?.orderId;
+      const reviewPaymentData = payments.find(p => p.id === reviewPaymentId);
+      const orderId = reviewPaymentData?.orderId;
       if (!orderId) return;
-      approvePayment.mutate({ orderId, note: reviewNote.trim() }, {
-        onSuccess: async () => {
-          await refetch();
-          setReviewModalOpen(false);
-          setReviewPaymentId(null);
-          setReviewAction(null);
-          setReviewNote('');
-        },
-      });
+
+      // Step 1: Confirm this individual payment
+      confirmSinglePayment.mutate(
+        { paymentId: reviewPaymentId, note: reviewNote.trim() },
+        {
+          onSuccess: async () => {
+            await refetch();
+
+            // Step 2: After confirming single payment, check if all payments for this order are confirmed
+            // Get fresh data after refetch completes
+            setTimeout(async () => {
+              const freshData = await refetch();
+              const allPaymentsForOrder = freshData.data?.items?.filter(
+                (p) => p.orderId === orderId
+              ) || [];
+
+              const allConfirmed = allPaymentsForOrder.every(
+                (p) => p.status === 'completed'
+              );
+
+              // Step 3: If all payments are confirmed, update order status
+              if (allConfirmed) {
+                confirmOrderPayments.mutate(
+                  { orderId, note: `All payments confirmed. ${reviewNote.trim()}` },
+                  {
+                    onSuccess: async () => {
+                      setReviewModalOpen(false);
+                      setReviewPaymentId(null);
+                      setReviewAction(null);
+                      setReviewNote('');
+                    },
+                  }
+                );
+              } else {
+                // Not all payments confirmed yet, just close the modal
+                setReviewModalOpen(false);
+                setReviewPaymentId(null);
+                setReviewAction(null);
+                setReviewNote('');
+              }
+            }, 500);
+          },
+        }
+      );
     } else {
       // rejectPayment expects paymentId
       const payload = { paymentId: reviewPaymentId, note: reviewNote.trim() };
@@ -173,7 +210,7 @@ export default function PaymentsPage() {
   const notifyMessage = notifyPayment
     ? `Send the seller notification for completed payment ${notifyPayment.transactionId}? This will trigger both email and in-app notification${notifyPayment.order?.vehicleId ? ' and mark the vehicle as sold.' : '.'}`
     : 'Select a completed payment to notify the seller.';
-  const isReviewSubmitting = approvePayment.isPending || rejectPayment.isPending;
+  const isReviewSubmitting = confirmSinglePayment.isPending || confirmOrderPayments.isPending || rejectPayment.isPending;
 
   return (
     <div>
@@ -478,7 +515,22 @@ export default function PaymentsPage() {
         title={reviewAction === 'confirm' ? 'Approve Payment' : 'Reject Payment'}
         description={
           reviewPayment
-            ? `Add an internal note for transaction ${reviewPayment.transactionId}.`
+            ? (() => {
+              const orderId = reviewPayment.orderId;
+              const otherPaymentsForOrder = payments.filter(
+                (p) => p.orderId === orderId && p.id !== reviewPayment.id
+              );
+              const pendingPaymentsForOrder = otherPaymentsForOrder.filter(
+                (p) => p.status === 'pending'
+              );
+
+              return reviewAction === 'confirm'
+                ? `Add an internal note for transaction ${reviewPayment.transactionId}. ${pendingPaymentsForOrder.length > 0
+                  ? `This order has ${pendingPaymentsForOrder.length} other pending payment(s). When all are confirmed, the order status will be updated automatically.`
+                  : 'Once confirmed, this payment will complete the order confirmation process.'
+                }`
+                : `Add an internal note for transaction ${reviewPayment.transactionId}.`;
+            })()
             : ''
         }
         showFooter

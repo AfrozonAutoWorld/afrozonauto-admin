@@ -2,13 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmModal } from '@/components/shared/ConfirmModal';
-import { useOrders } from '@/lib/hooks/useOrders';
+import { useOrders, useDeleteOrder } from '@/lib/hooks/useOrders';
 import { useNotifySellerPaymentCompleted } from '@/lib/hooks/usePayment';
 import {
   ArrowLeft,
@@ -17,6 +18,7 @@ import {
   MoreVertical,
   Search,
   ShoppingCart,
+  Trash2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -88,7 +90,9 @@ const filterLabelClassName = 'text-sm font-medium text-slate-700';
 
 export default function AllOrdersPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const notifySeller = useNotifySellerPaymentCompleted();
+  const deleteOrder = useDeleteOrder();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -103,6 +107,10 @@ export default function AllOrdersPage() {
     vehicleId?: string | null;
     requestNumber?: string | null;
     transactionId: string;
+  } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    requestNumber: string;
   } | null>(null);
   const limit = 10;
 
@@ -161,6 +169,13 @@ export default function AllOrdersPage() {
     });
   };
 
+  const handleDeleteOrder = (order: Order) => {
+    setDeleteTarget({
+      id: order.id,
+      requestNumber: order.requestNumber || order.id,
+    });
+  };
+
   const confirmNotifySeller = () => {
     if (!notifyTarget) return;
 
@@ -175,6 +190,16 @@ export default function AllOrdersPage() {
         },
       },
     );
+  };
+
+  const confirmDeleteOrder = () => {
+    if (!deleteTarget) return;
+
+    deleteOrder.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        setDeleteTarget(null);
+      },
+    });
   };
 
 
@@ -437,7 +462,10 @@ export default function AllOrdersPage() {
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                  onClick={() => router.push(`/admin/orders/${order.id}`)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/admin/orders/${order.id}`);
+                                  }}
                                 >
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Detail
@@ -445,9 +473,29 @@ export default function AllOrdersPage() {
                                 {completedPayment && (
                                   <>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => handleNotifySeller(order)}>
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleNotifySeller(order);
+                                      }}
+                                    >
                                       <BellRing className="mr-2 h-4 w-4" />
                                       Notify Seller
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                {session?.user?.role === 'SUPER_ADMIN' && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteOrder(order);
+                                      }}
+                                      className="text-red-600 focus:text-red-600"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete Order
                                     </DropdownMenuItem>
                                   </>
                                 )}
@@ -516,6 +564,26 @@ export default function AllOrdersPage() {
         onConfirm={confirmNotifySeller}
         isLoading={notifySeller.isPending}
         confirmText="Notify Seller"
+      />
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+          }
+        }}
+        title="Delete Order"
+        description="This action cannot be undone. The order will be permanently deleted from the system."
+        message={
+          deleteTarget
+            ? `Are you sure you want to delete order ${deleteTarget.requestNumber}?`
+            : ''
+        }
+        onConfirm={confirmDeleteOrder}
+        isLoading={deleteOrder.isPending}
+        confirmText="Delete Order"
+        variant="destructive"
       />
     </div>
   );

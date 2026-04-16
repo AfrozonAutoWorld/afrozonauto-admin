@@ -155,9 +155,14 @@ export function useAddOrderNote() {
 
   return useMutation({
     mutationFn: ({ id, note }: { id: string; note: string }) =>
-      apiClient.post(API_ROUTES.orders.addOrderNote(id), { note }),
+      apiClient.post(API_ROUTES.orders.addNote(id), {
+        content: note,
+        isInternal: true,
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["orders", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders", "pending"] });
       toast.success("Note added successfully");
     },
     onError: () => {
@@ -181,6 +186,25 @@ export function useCancelOrder() {
     },
     onError: () => {
       toast.error("Failed to cancel order");
+    },
+  });
+}
+
+export function useDeleteOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (orderId: string) =>
+      apiClient.delete(API_ROUTES.orders.deleteOrder(orderId)),
+    onSuccess: (_, orderId) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders", orderId] });
+      queryClient.invalidateQueries({ queryKey: ["orders", "pending"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Order deleted successfully");
+    },
+    onError: () => {
+      toast.error("Failed to delete order");
     },
   });
 }
