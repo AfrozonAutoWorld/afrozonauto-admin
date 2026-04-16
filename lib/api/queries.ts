@@ -457,7 +457,9 @@ const normalizeVehicleEntity = (rawValue: unknown): Vehicle => {
     driveType: getString(record.driveType, record.drivetrain) || undefined,
     doors: getNumber(record.doors) || undefined,
     seats: getNumber(record.seats) || undefined,
-    sections: Array.isArray(record.sections) ? (record.sections as string[]) : [],
+    sections: Array.isArray(record.sections)
+      ? (record.sections as string[])
+      : [],
     createdAt: getString(
       record.createdAt,
       nestedVehicle?.createdAt,
@@ -631,7 +633,7 @@ export const vehicleQueries = {
   // Add vehicle to section (RECOMMENDED or TRENDING)
   addVehicleToSection: async (
     id: string,
-    section: "RECOMMENDED" | "TRENDING",
+    section: "RECOMMENDED" | "TRENDING" | "SPECIALTY",
   ): Promise<void> => {
     await apiClient.post(
       API_ROUTES.vehicleDefinitions.addVehicletoSection(id),
@@ -644,7 +646,7 @@ export const vehicleQueries = {
   // Remove vehicle from section
   removeVehicleFromSection: async (
     id: string,
-    section: "RECOMMENDED" | "TRENDING",
+    section: "RECOMMENDED" | "TRENDING" | "SPECIALTY",
   ): Promise<void> => {
     await apiClient.delete(
       API_ROUTES.vehicleDefinitions.removeVehicleFromSection(id, section),

@@ -42,6 +42,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import Image from 'next/image';
+import cloudinaryLoader from '@/lib/cloudinaryLoader';
 import { AddCarModal } from './AddCarModal';
 import { Vehicle } from '@/lib/api/queries';
 
@@ -62,7 +63,7 @@ export function CarsListingPage() {
   } | null>(null);
   const [sectionAction, setSectionAction] = useState<{
     action: 'add' | 'remove';
-    section: 'RECOMMENDED' | 'TRENDING';
+    section: 'RECOMMENDED' | 'TRENDING' | "SPECIALTY";
   } | null>(null);
 
   const filters = {
@@ -104,7 +105,7 @@ export function CarsListingPage() {
     id: string,
     name: string,
     action: 'add' | 'remove',
-    section: 'RECOMMENDED' | 'TRENDING'
+    section: 'RECOMMENDED' | 'TRENDING' | 'SPECIALTY'
   ) => {
     setSelectedVehicleForSection({ id, name });
     setSectionAction({ action, section });
@@ -240,6 +241,8 @@ export function CarsListingPage() {
                                     alt={`${vehicle.make} ${vehicle.model}`}
                                     fill
                                     className="object-cover"
+                                    loader={primaryImage.includes('res.cloudinary.com') ? cloudinaryLoader : undefined}
+                                    unoptimized={!primaryImage.includes('res.cloudinary.com') && !primaryImage.includes('images.pexels.com') && !primaryImage.includes('images.unsplash.com')}
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement;
                                       target.src = 'https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg?auto=compress&cs=tinysrgb&w=800';
@@ -333,49 +336,53 @@ export function CarsListingPage() {
                                 </DropdownMenuItem>
                                 {canManageVehicles && (
                                   <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuLabel className="text-xs text-muted-foreground">
-                                      Sections
-                                    </DropdownMenuLabel>
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        handleSectionAction(
-                                          vehicle.id,
-                                          `${vehicle.make} ${vehicle.model}`,
-                                          vehicle.sections?.includes('RECOMMENDED') ? 'remove' : 'add',
-                                          'RECOMMENDED'
-                                        )
-                                      }
-                                      disabled={
-                                        addVehicleToSection.isPending ||
-                                        removeVehicleFromSection.isPending
-                                      }
-                                    >
-                                      <Star className="mr-2 h-4 w-4" />
-                                      {vehicle.sections?.includes('RECOMMENDED')
-                                        ? 'Remove from Recommended'
-                                        : 'Add to Recommended'}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        handleSectionAction(
-                                          vehicle.id,
-                                          `${vehicle.make} ${vehicle.model}`,
-                                          vehicle.sections?.includes('TRENDING') ? 'remove' : 'add',
-                                          'TRENDING'
-                                        )
-                                      }
-                                      disabled={
-                                        addVehicleToSection.isPending ||
-                                        removeVehicleFromSection.isPending
-                                      }
-                                    >
-                                      <TrendingUp className="mr-2 h-4 w-4" />
-                                      {vehicle.sections?.includes('TRENDING')
-                                        ? 'Remove from Trending'
-                                        : 'Add to Trending'}
-                                    </DropdownMenuItem>
+                                    {vehicle.status !== 'SOLD' && (
+                                      <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                          Sections
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            handleSectionAction(
+                                              vehicle.id,
+                                              `${vehicle.make} ${vehicle.model}`,
+                                              vehicle.sections?.includes('RECOMMENDED') ? 'remove' : 'add',
+                                              'RECOMMENDED'
+                                            )
+                                          }
+                                          disabled={
+                                            addVehicleToSection.isPending ||
+                                            removeVehicleFromSection.isPending
+                                          }
+                                        >
+                                          <Star className="mr-2 h-4 w-4" />
+                                          {vehicle.sections?.includes('RECOMMENDED')
+                                            ? 'Remove from Recommended'
+                                            : 'Add to Recommended'}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            handleSectionAction(
+                                              vehicle.id,
+                                              `${vehicle.make} ${vehicle.model}`,
+                                              vehicle.sections?.includes('TRENDING') ? 'remove' : 'add',
+                                              'TRENDING'
+                                            )
+                                          }
+                                          disabled={
+                                            addVehicleToSection.isPending ||
+                                            removeVehicleFromSection.isPending
+                                          }
+                                        >
+                                          <TrendingUp className="mr-2 h-4 w-4" />
+                                          {vehicle.sections?.includes('TRENDING')
+                                            ? 'Remove from Trending'
+                                            : 'Add to Trending'}
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       onClick={() => handleDelete(

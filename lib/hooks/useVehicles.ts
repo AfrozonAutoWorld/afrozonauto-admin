@@ -161,7 +161,7 @@ export const useAddVehicleToSection = () => {
   return useMutation<
     void,
     AxiosError<{ message?: string }>,
-    { id: string; section: "RECOMMENDED" | "TRENDING" }
+    { id: string; section: "RECOMMENDED" | "TRENDING" | "SPECIALTY" }
   >({
     mutationFn: ({ id, section }) =>
       vehicleQueries.addVehicleToSection(id, section),
@@ -187,7 +187,7 @@ export const useRemoveVehicleFromSection = () => {
   return useMutation<
     void,
     AxiosError<{ message?: string }>,
-    { id: string; section: "RECOMMENDED" | "TRENDING" }
+    { id: string; section: "RECOMMENDED" | "TRENDING" | "SPECIALTY" }
   >({
     mutationFn: ({ id, section }) =>
       vehicleQueries.removeVehicleFromSection(id, section),

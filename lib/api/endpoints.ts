@@ -61,7 +61,7 @@ export const API_ROUTES = {
       `/vehicles/recommended-definitions/${id}`,
     deleteRecommendedVehicle: (id: string) =>
       `/vehicles/recommended-definitions/${id}`,
-    addVehicletoSection: (id: string) => `/vehicles/${id}/sections`, // section "RECOMMENDED"  or "TRENDING"
+    addVehicletoSection: (id: string) => `/vehicles/${id}/sections`, // section "RECOMMENDED", "TRENDING", or "SPECIALTY"
     removeVehicleFromSection: (id: string, section: string) =>
       `/vehicles/${id}/sections/${section}`, // section "RECOMMENDED"  or "TRENDING"
   },
