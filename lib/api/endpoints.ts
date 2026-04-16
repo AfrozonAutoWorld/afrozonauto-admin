@@ -25,7 +25,7 @@ export const API_ROUTES = {
       `/admin/payments/order/${orderId}`,
     initiateRefund: (paymentId: string) =>
       `/admin/payments/${paymentId}/refund`,
-    confirmPayment: (id: string) => `/admin/orders/${id}/confirm-payment`, // payload is { status: "COMPLETED", note: string }
+    confirmPayment: (id: string) => `/admin/orders/${id}/confirm-payment`, // confirm all pending paymentpayload for an order { status: "COMPLETED", note: string }
     confirmSinglePayment: (id: string) => `/admin/payments/${id}/confirm`, // payload is note: string
     rejectPayment: (id: string) => `/admin/payments/${id}/reject`, // payload is note: string
     notifySeller: (id: string) => `/admin/payments/${id}/notify-seller`,
@@ -61,6 +61,9 @@ export const API_ROUTES = {
       `/vehicles/recommended-definitions/${id}`,
     deleteRecommendedVehicle: (id: string) =>
       `/vehicles/recommended-definitions/${id}`,
+    addVehicletoSection: (id: string) => `/vehicles/${id}/sections`, // section "RECOMMENDED"  or "TRENDING"
+    removeVehicleFromSection: (id: string, section: string) =>
+      `/vehicles/${id}/sections/${section}`, // section "RECOMMENDED"  or "TRENDING"
   },
   vehicleCategories: {
     getVehicleCategories: "/vehicles/admin/categories",

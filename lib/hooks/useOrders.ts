@@ -155,9 +155,14 @@ export function useAddOrderNote() {
 
   return useMutation({
     mutationFn: ({ id, note }: { id: string; note: string }) =>
-      apiClient.post(API_ROUTES.orders.addOrderNote(id), { note }),
+      apiClient.post(API_ROUTES.orders.addNote(id), {
+        content: note,
+        isInternal: true,
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["orders", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders", "pending"] });
       toast.success("Note added successfully");
     },
     onError: () => {

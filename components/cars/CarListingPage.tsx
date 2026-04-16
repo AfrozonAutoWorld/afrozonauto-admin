@@ -29,6 +29,8 @@ import {
 import {
   useVehicles,
   useDeleteVehicle,
+  useAddVehicleToSection,
+  useRemoveVehicleFromSection,
 } from '@/lib/hooks/useVehicles';
 import {
   Plus,
@@ -36,7 +38,8 @@ import {
   Eye,
   Star,
   Car as CarIcon,
-  Trash2
+  Trash2,
+  TrendingUp,
 } from 'lucide-react';
 import Image from 'next/image';
 import { AddCarModal } from './AddCarModal';
@@ -52,6 +55,15 @@ export function CarsListingPage() {
     id: string;
     name: string;
   } | null>(null);
+  const [sectionModalOpen, setSectionModalOpen] = useState(false);
+  const [selectedVehicleForSection, setSelectedVehicleForSection] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [sectionAction, setSectionAction] = useState<{
+    action: 'add' | 'remove';
+    section: 'RECOMMENDED' | 'TRENDING';
+  } | null>(null);
 
   const filters = {
     page: currentPage,
@@ -60,6 +72,8 @@ export function CarsListingPage() {
 
   const { data, isLoading } = useVehicles(filters);
   const deleteVehicle = useDeleteVehicle();
+  const addVehicleToSection = useAddVehicleToSection();
+  const removeVehicleFromSection = useRemoveVehicleFromSection();
   const canManageVehicles =
     session?.user.role === 'SUPER_ADMIN' ||
     session?.user.role === 'OPERATIONS_ADMIN';
@@ -84,6 +98,51 @@ export function CarsListingPage() {
     deleteVehicle.mutate(vehicleToDelete.id, {
       onSuccess: () => setVehicleToDelete(null),
     });
+  };
+
+  const handleSectionAction = (
+    id: string,
+    name: string,
+    action: 'add' | 'remove',
+    section: 'RECOMMENDED' | 'TRENDING'
+  ) => {
+    setSelectedVehicleForSection({ id, name });
+    setSectionAction({ action, section });
+    setSectionModalOpen(true);
+  };
+
+  const confirmSectionAction = () => {
+    if (!selectedVehicleForSection || !sectionAction) return;
+
+    if (sectionAction.action === 'add') {
+      addVehicleToSection.mutate(
+        {
+          id: selectedVehicleForSection.id,
+          section: sectionAction.section,
+        },
+        {
+          onSuccess: () => {
+            setSectionModalOpen(false);
+            setSelectedVehicleForSection(null);
+            setSectionAction(null);
+          },
+        }
+      );
+    } else {
+      removeVehicleFromSection.mutate(
+        {
+          id: selectedVehicleForSection.id,
+          section: sectionAction.section,
+        },
+        {
+          onSuccess: () => {
+            setSectionModalOpen(false);
+            setSelectedVehicleForSection(null);
+            setSectionAction(null);
+          },
+        }
+      );
+    }
   };
 
   function getPrimaryImage(vehicle: Vehicle): string {
@@ -161,6 +220,7 @@ export function CarsListingPage() {
                       <TableHead className="hidden md:table-cell">Mileage</TableHead>
                       <TableHead>Location</TableHead>
                       <TableHead>Source</TableHead>
+                      <TableHead>Sections</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
@@ -224,6 +284,32 @@ export function CarsListingPage() {
                             <StatusBadge status={vehicle.source === 'API' ? 'api' : 'manual'} />
                           </TableCell>
                           <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {vehicle.sections && vehicle.sections.length > 0 ? (
+                                vehicle.sections.map((section) => (
+                                  <span
+                                    key={section}
+                                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${section === 'RECOMMENDED'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : section === 'TRENDING'
+                                        ? 'bg-blue-100 text-blue-800'
+                                        : 'bg-gray-100 text-gray-700'
+                                      }`}
+                                  >
+                                    {section === 'RECOMMENDED' ? (
+                                      <Star className="mr-1 h-3 w-3" />
+                                    ) : section === 'TRENDING' ? (
+                                      <TrendingUp className="mr-1 h-3 w-3" />
+                                    ) : null}
+                                    {section.charAt(0) + section.slice(1).toLowerCase()}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
                             <StatusBadge status={vehicle.status} />
                           </TableCell>
                           <TableCell>
@@ -247,6 +333,49 @@ export function CarsListingPage() {
                                 </DropdownMenuItem>
                                 {canManageVehicles && (
                                   <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                      Sections
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleSectionAction(
+                                          vehicle.id,
+                                          `${vehicle.make} ${vehicle.model}`,
+                                          vehicle.sections?.includes('RECOMMENDED') ? 'remove' : 'add',
+                                          'RECOMMENDED'
+                                        )
+                                      }
+                                      disabled={
+                                        addVehicleToSection.isPending ||
+                                        removeVehicleFromSection.isPending
+                                      }
+                                    >
+                                      <Star className="mr-2 h-4 w-4" />
+                                      {vehicle.sections?.includes('RECOMMENDED')
+                                        ? 'Remove from Recommended'
+                                        : 'Add to Recommended'}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleSectionAction(
+                                          vehicle.id,
+                                          `${vehicle.make} ${vehicle.model}`,
+                                          vehicle.sections?.includes('TRENDING') ? 'remove' : 'add',
+                                          'TRENDING'
+                                        )
+                                      }
+                                      disabled={
+                                        addVehicleToSection.isPending ||
+                                        removeVehicleFromSection.isPending
+                                      }
+                                    >
+                                      <TrendingUp className="mr-2 h-4 w-4" />
+                                      {vehicle.sections?.includes('TRENDING')
+                                        ? 'Remove from Trending'
+                                        : 'Add to Trending'}
+                                    </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       onClick={() => handleDelete(
@@ -330,6 +459,38 @@ export function CarsListingPage() {
         confirmText="Delete Vehicle"
         isLoading={deleteVehicle.isPending}
         variant="destructive"
+      />
+
+      <ConfirmModal
+        open={sectionModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSectionModalOpen(false);
+            setSelectedVehicleForSection(null);
+            setSectionAction(null);
+          }
+        }}
+        title={
+          sectionAction?.action === 'add'
+            ? `Add to ${sectionAction?.section}`
+            : `Remove from ${sectionAction?.section}`
+        }
+        description={
+          sectionAction?.action === 'add'
+            ? `Add ${selectedVehicleForSection?.name} to the ${sectionAction?.section} section`
+            : `Remove ${selectedVehicleForSection?.name} from the ${sectionAction?.section} section`
+        }
+        message={
+          sectionAction?.action === 'add'
+            ? `This vehicle will be featured in the ${sectionAction?.section} section on the platform.`
+            : `This vehicle will no longer appear in the ${sectionAction?.section} section.`
+        }
+        onConfirm={confirmSectionAction}
+        confirmText={sectionAction?.action === 'add' ? 'Add to Section' : 'Remove from Section'}
+        isLoading={
+          addVehicleToSection.isPending || removeVehicleFromSection.isPending
+        }
+        variant={sectionAction?.action === 'remove' ? 'warning' : 'default'}
       />
     </div>
   );

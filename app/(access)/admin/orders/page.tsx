@@ -462,7 +462,10 @@ export default function AllOrdersPage() {
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                  onClick={() => router.push(`/admin/orders/${order.id}`)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/admin/orders/${order.id}`);
+                                  }}
                                 >
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Detail
@@ -470,7 +473,12 @@ export default function AllOrdersPage() {
                                 {completedPayment && (
                                   <>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => handleNotifySeller(order)}>
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleNotifySeller(order);
+                                      }}
+                                    >
                                       <BellRing className="mr-2 h-4 w-4" />
                                       Notify Seller
                                     </DropdownMenuItem>
@@ -480,7 +488,10 @@ export default function AllOrdersPage() {
                                   <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
-                                      onClick={() => handleDeleteOrder(order)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteOrder(order);
+                                      }}
                                       className="text-red-600 focus:text-red-600"
                                     >
                                       <Trash2 className="mr-2 h-4 w-4" />

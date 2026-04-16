@@ -145,6 +145,16 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       label: 'Certified',
       className: 'bg-purple-500 hover:bg-purple-600'
     },
+    pending_review: {
+      variant: 'secondary',
+      label: 'Pending Review',
+      className: 'bg-yellow-500 hover:bg-yellow-600 text-white'
+    },
+    reviewing: {
+      variant: 'secondary',
+      label: 'Reviewing',
+      className: 'bg-blue-500 hover:bg-blue-600 text-white'
+    },
     // Vehicle Status
     available: {
       variant: 'default',

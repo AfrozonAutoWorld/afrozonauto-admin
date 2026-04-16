@@ -175,10 +175,28 @@ export function useConfirmPayment() {
       }),
     onSuccess: async (_, variables) => {
       await refreshPaymentQueries(queryClient, variables.orderId);
-      toast.success("Payment approved successfully");
+      toast.success("Order payment status updated successfully");
     },
     onError: () => {
-      toast.error("Failed to approve payment");
+      toast.error("Failed to update order payment status");
+    },
+  });
+}
+
+export function useConfirmSinglePayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ paymentId, note }: { paymentId: string; note: string }) =>
+      apiClient.patch(API_ROUTES.payments.confirmSinglePayment(paymentId), {
+        note,
+      }),
+    onSuccess: async (_, variables) => {
+      await refreshPaymentQueries(queryClient, variables.paymentId);
+      toast.success("Payment confirmed successfully");
+    },
+    onError: () => {
+      toast.error("Failed to confirm payment");
     },
   });
 }
